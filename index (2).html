@@ -1,0 +1,2498 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>ระบบบันทึกการซ่อมบำรุงรถยนต์ราชการ — โรงพยาบาลนิคมพัฒนา</title>
+<meta name="description" content="ระบบบันทึกและติดตามการซ่อมบำรุงรถยนต์ราชการ โรงพยาบาลนิคมพัฒนา จังหวัดระยอง">
+<meta name="theme-color" content="#1a3a5c">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="ซ่อมรถ รพ.นิคม">
+<!-- Favicon -->
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<!-- PWA Manifest -->
+<link rel="manifest" href="manifest.json">
+<!-- Open Graph (แสดงผลสวยเมื่อแชร์ลิงก์) -->
+<meta property="og:title" content="ระบบซ่อมบำรุงรถยนต์ราชการ — รพ.นิคมพัฒนา">
+<meta property="og:description" content="ระบบบันทึกการซ่อมบำรุงรถยนต์ราชการ พร้อมแจ้งเตือนกำหนดซ่อมอัตโนมัติ">
+<meta property="og:type" content="website">
+<style>
+:root {
+  --navy: #1a3a5c;
+  --blue: #2563a8;
+  --green: #059669;
+  --red: #dc2626;
+  --amber: #d97706;
+  --bg: #f0f4f8;
+  --white: #ffffff;
+  --gray-50: #f8fafc;
+  --gray-100: #f1f5f9;
+  --gray-200: #e2e8f0;
+  --gray-400: #94a3b8;
+  --gray-600: #475569;
+  --gray-800: #1e293b;
+  --radius: 10px;
+  --shadow: 0 2px 8px rgba(0,0,0,0.08);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.12);
+}
+*,*::before,*::after { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 15px; }
+body { font-family: 'Sarabun', 'Helvetica Neue', Arial, sans-serif; background: var(--bg); color: var(--gray-800); min-height: 100vh; }
+@import url('https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;500;600;700&display=swap');
+
+/* ───── LOADING ───── */
+#splash {
+  position: fixed; inset: 0; background: var(--navy); z-index: 9999;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+  transition: opacity .4s;
+}
+#splash img { width: 80px; height: 80px; border-radius: 50%; border: 3px solid rgba(255,255,255,.35); }
+#splash h2 { color: #fff; font-size: 17px; font-weight: 700; text-align: center; }
+#splash p { color: rgba(255,255,255,.7); font-size: 13px; text-align: center; }
+.spinner { width: 38px; height: 38px; border: 3px solid rgba(255,255,255,.25); border-top-color: #fff; border-radius: 50%; animation: spin .7s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+#splashMsg { color: rgba(255,255,255,.75); font-size: 12px; }
+
+/* ───── HEADER ───── */
+.hdr {
+  background: linear-gradient(135deg, #0f2540 0%, var(--navy) 50%, #1a5c3a 100%);
+  color: #fff; position: sticky; top: 0; z-index: 100;
+  box-shadow: 0 4px 20px rgba(0,0,0,.3);
+  padding-top: env(safe-area-inset-top);
+}
+.hdr-inner {
+  display: flex; align-items: center; gap: 14px;
+  padding: 11px 20px; max-width: 1440px; margin: 0 auto;
+}
+.hdr-logo { width: 56px; height: 56px; border-radius: 50%; border: 2.5px solid rgba(255,255,255,.4); overflow: hidden; flex-shrink: 0; background: #fff; }
+.hdr-logo img { width: 100%; height: 100%; object-fit: cover; }
+.hdr-text { flex: 1; min-width: 0; }
+.hdr-text h1 { font-size: 16px; font-weight: 700; line-height: 1.3; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hdr-text p { font-size: 11px; opacity: .8; margin-top: 2px; }
+.hdr-stats { display: flex; gap: 10px; flex-shrink: 0; }
+.hstat { background: rgba(255,255,255,.13); border-radius: 8px; padding: 6px 12px; text-align: center; min-width: 58px; }
+.hstat .n { font-size: 20px; font-weight: 700; }
+.hstat .l { font-size: 10px; opacity: .85; }
+.hstat.alert { background: rgba(220,38,38,.35); }
+
+/* ───── SYNC BAR ───── */
+.syncbar {
+  background: rgba(0,0,0,.25); padding: 5px 20px;
+  display: flex; align-items: center; justify-content: space-between; font-size: 11px;
+}
+.synctxt { color: rgba(255,255,255,.8); }
+.synctxt.ok { color: #86efac; }
+.synctxt.err { color: #fca5a5; }
+.synctxt.busy { color: #93c5fd; }
+.syncbtn {
+  background: rgba(255,255,255,.12); border: 1px solid rgba(255,255,255,.25);
+  color: #fff; border-radius: 6px; padding: 2px 10px; font-size: 11px;
+  cursor: pointer; font-family: inherit;
+}
+.syncbtn:hover { background: rgba(255,255,255,.22); }
+
+/* ───── NAV TABS ───── */
+.nav { background: #12294a; display: flex; overflow-x: auto; scrollbar-width: none; }
+.nav::-webkit-scrollbar { display: none; }
+.ntab {
+  padding: 9px 15px; font-size: 12.5px; font-weight: 500; color: rgba(255,255,255,.65);
+  border-bottom: 3px solid transparent; cursor: pointer; white-space: nowrap;
+  transition: all .2s; flex-shrink: 0;
+}
+.ntab:hover { color: #fff; background: rgba(255,255,255,.07); }
+.ntab.on { color: #5de0a0; border-bottom-color: #5de0a0; background: rgba(93,224,160,.08); }
+
+/* ───── MAIN ───── */
+.main { max-width: 1440px; margin: 0 auto; padding: 18px 16px; padding-bottom: calc(18px + env(safe-area-inset-bottom)); }
+
+/* ───── PANELS ───── */
+.panel { background: var(--white); border-radius: var(--radius); padding: 18px; margin-bottom: 16px; box-shadow: var(--shadow); }
+.ptitle { font-size: 14.5px; font-weight: 700; color: var(--navy); margin-bottom: 14px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.ptitle-left { display: flex; align-items: center; gap: 8px; }
+.badge { display: inline-block; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; }
+.badge-blue { background: #dbeafe; color: #1e40af; }
+.badge-green { background: #d1fae5; color: #065f46; }
+.badge-amber { background: #fef3c7; color: #92400e; }
+.badge-red { background: #fee2e2; color: #991b1b; }
+.badge-grey { background: var(--gray-100); color: var(--gray-600); }
+.badge-navy { background: var(--navy); color: #fff; font-size: 11px; padding: 2px 8px; border-radius: 4px; }
+
+/* ───── CAR GRID ───── */
+.car-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px,1fr)); gap: 10px; margin-bottom: 18px; }
+.ccard {
+  background: var(--white); border-radius: var(--radius); padding: 12px 14px;
+  border: 2px solid var(--gray-200); cursor: pointer; position: relative;
+  transition: all .2s; box-shadow: var(--shadow);
+}
+.ccard:hover { border-color: var(--blue); transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+.ccard.on { border-color: var(--blue); background: #eff6ff; }
+.ccard.warn { border-left: 4px solid var(--amber); }
+.ccard.danger { border-left: 4px solid var(--red); }
+.ccard .plate { font-size: 15px; font-weight: 700; color: var(--navy); }
+.ccard .cnt { font-size: 11px; color: var(--gray-400); margin-top: 2px; }
+.ccard .nxt { font-size: 11px; color: var(--green); font-weight: 600; margin-top: 2px; }
+.ccard .dot { position: absolute; top: -6px; right: -6px; font-size: 15px; }
+
+/* ───── ALERTS ───── */
+.alert { border-radius: 9px; padding: 11px 14px; margin-bottom: 12px; display: flex; gap: 10px; align-items: flex-start; font-size: 13px; }
+.alert.green { background: #d1fae5; border-left: 4px solid var(--green); color: #065f46; }
+.alert.amber { background: #fef9c3; border-left: 4px solid var(--amber); color: #78350f; }
+.alert.red { background: #fee2e2; border-left: 4px solid var(--red); color: #7f1d1d; }
+.alert.blue { background: #dbeafe; border-left: 4px solid var(--blue); color: #1e3a5f; }
+.alert-icon { font-size: 17px; flex-shrink: 0; }
+.alert-body { flex: 1; line-height: 1.6; }
+
+/* ───── TABLE ───── */
+.tbl-wrap { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+th { background: var(--navy); color: #fff; padding: 8px 11px; text-align: left; font-weight: 600; font-size: 11.5px; white-space: nowrap; }
+td { padding: 8px 11px; border-bottom: 1px solid #edf2f7; vertical-align: top; }
+tr:hover td { background: #f0f7ff; }
+tr:last-child td { border-bottom: none; }
+.dlist { list-style: none; }
+.dlist li::before { content: "• "; color: var(--blue); }
+
+/* ───── FORM ───── */
+.fgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
+.fg { display: flex; flex-direction: column; gap: 4px; }
+.fg.full { grid-column: 1/-1; }
+label { font-size: 11.5px; font-weight: 600; color: #374151; }
+.hint { font-size: 11px; color: var(--gray-400); }
+input, select, textarea {
+  border: 1.5px solid var(--gray-200); border-radius: 7px;
+  padding: 8px 10px; font-size: 13.5px; font-family: inherit; width: 100%;
+  transition: border-color .2s; background: var(--white); color: var(--gray-800);
+}
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--blue); box-shadow: 0 0 0 3px rgba(37,99,168,.12); }
+textarea { resize: vertical; min-height: 78px; }
+
+/* ───── BUTTONS ───── */
+.btn {
+  padding: 8px 16px; border-radius: 7px; border: none; cursor: pointer;
+  font-family: inherit; font-size: 13.5px; font-weight: 600; transition: all .2s;
+  display: inline-flex; align-items: center; gap: 6px; min-height: 38px;
+}
+.btn-primary { background: var(--blue); color: #fff; }
+.btn-primary:hover { background: #1a4f8f; }
+.btn-success { background: var(--green); color: #fff; }
+.btn-success:hover { background: #047857; }
+.btn-danger { background: var(--red); color: #fff; font-size: 12px; padding: 5px 10px; min-height: 32px; }
+.btn-danger:hover { background: #b91c1c; }
+.btn-outline { background: var(--white); border: 2px solid var(--blue); color: var(--blue); }
+.btn-outline:hover { background: #eff6ff; }
+.btn-amber { background: var(--amber); color: #fff; }
+.btn-amber:hover { background: #b45309; }
+.btn-sm { font-size: 12px; padding: 5px 12px; min-height: 32px; }
+.btnrow { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 14px; }
+
+/* ───── QUICK ITEMS ───── */
+.qi-wrap { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.qi {
+  background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 20px;
+  padding: 4px 12px; font-size: 12px; cursor: pointer; color: #1e40af;
+  transition: all .2s;
+}
+.qi:hover { background: #dbeafe; }
+.qi.on { background: var(--blue); color: #fff; border-color: var(--blue); }
+
+/* ───── DETAIL EDITOR ───── */
+.deditor { border: 1.5px solid var(--gray-200); border-radius: 7px; overflow: hidden; }
+.drow { display: flex; align-items: center; gap: 8px; padding: 6px 10px; border-bottom: 1px solid #f1f5f9; }
+.drow:last-child { border-bottom: none; }
+.drow input { border: none; font-size: 13px; padding: 4px; }
+.drow input:focus { outline: none; background: #f0f7ff; border-radius: 4px; }
+.drow .rm { background: none; border: none; color: var(--red); cursor: pointer; font-size: 16px; padding: 0 4px; }
+.dadd { width: 100%; padding: 7px 14px; background: var(--gray-50); border: none; border-top: 1px solid var(--gray-200); cursor: pointer; font-size: 12px; color: var(--gray-600); font-family: inherit; text-align: left; }
+.dadd:hover { background: var(--gray-100); }
+
+/* ───── KM BADGES ───── */
+.kmbadge { background: #f0f9ff; border: 1px solid #bae6fd; color: #0369a1; border-radius: 5px; padding: 1px 7px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+.nxtbadge { background: #d1fae5; border: 1px solid #6ee7b7; color: #065f46; border-radius: 5px; padding: 1px 7px; font-size: 11.5px; font-weight: 600; white-space: nowrap; }
+.nxtbadge.warn { background: #fef9c3; border-color: #fde047; color: #854d0e; }
+.nxtbadge.danger { background: #fee2e2; border-color: #fca5a5; color: #991b1b; }
+
+/* ───── SUMMARY CARDS ───── */
+.scards { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px,1fr)); gap: 12px; }
+.scard { background: var(--white); border-radius: var(--radius); padding: 14px 16px; border-left: 4px solid var(--blue); box-shadow: var(--shadow); }
+.scard h3 { font-size: 12px; color: var(--gray-600); font-weight: 500; }
+.scard .val { font-size: 22px; font-weight: 700; color: var(--navy); margin-top: 3px; }
+.scard .sub { font-size: 11px; color: var(--gray-400); margin-top: 3px; }
+
+/* ───── FORECAST ───── */
+.fc-card {
+  border-radius: 10px; padding: 13px 16px; margin-bottom: 11px;
+  display: flex; flex-direction: column; gap: 5px;
+}
+.fc-card.ok { background: #ecfdf5; border-left: 4px solid var(--green); }
+.fc-card.warn { background: #fffbeb; border-left: 4px solid var(--amber); }
+.fc-card.danger { background: #fef2f2; border-left: 4px solid var(--red); }
+.fc-card.info { background: #eff6ff; border-left: 4px solid var(--blue); }
+.fc-row1 { display: flex; align-items: center; gap: 8px; }
+.fc-plate { font-size: 15px; font-weight: 700; }
+.fc-status { font-size: 12px; }
+.fc-detail { font-size: 11.5px; color: var(--gray-600); line-height: 1.6; }
+.sixmo-box { margin-top: 6px; padding: 6px 10px; border-radius: 7px; font-size: 11.5px; line-height: 1.6; }
+.sixmo-box.ok { background: #d1fae5; border: 1px solid #6ee7b7; color: #065f46; }
+.sixmo-box.warn { background: #fef9c3; border: 1px solid #fde047; color: #854d0e; }
+.sixmo-box.danger { background: #fee2e2; border: 1px solid #fca5a5; color: #991b1b; }
+
+/* ───── BACKUP ───── */
+.bcard { border: 1.5px solid var(--gray-200); border-radius: 9px; padding: 15px; margin-bottom: 13px; }
+.bcard h4 { font-size: 13.5px; color: var(--navy); margin-bottom: 5px; }
+.bcard p { font-size: 12px; color: var(--gray-600); margin-bottom: 10px; line-height: 1.6; }
+.file-pick { display: inline-block; background: #eff6ff; border: 1.5px dashed #93c5fd; border-radius: 7px; padding: 9px 15px; cursor: pointer; font-size: 13px; color: #1e40af; }
+.file-pick:hover { background: #dbeafe; }
+
+/* ───── MODAL ───── */
+.overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,.5); z-index: 200; align-items: center; justify-content: center; padding: 16px; }
+.overlay.open { display: flex; }
+.modal { background: var(--white); border-radius: 13px; padding: 22px; width: 100%; max-width: 620px; max-height: 92vh; overflow-y: auto; }
+.modal h2 { font-size: 16px; font-weight: 700; color: var(--navy); margin-bottom: 16px; }
+.modal-close { float: right; background: none; border: none; font-size: 22px; cursor: pointer; color: var(--gray-400); line-height: 1; }
+
+/* ───── TOAST ───── */
+.toast {
+  position: fixed; bottom: 22px; right: 16px; max-width: 320px;
+  background: var(--navy); color: #fff; padding: 11px 18px; border-radius: 9px;
+  box-shadow: var(--shadow-lg); font-size: 13px; z-index: 300;
+  display: none; animation: slideup .3s ease;
+}
+.toast.show { display: block; }
+@keyframes slideup { from { opacity:0; transform: translateY(10px); } to { opacity:1; transform: translateY(0); } }
+
+
+/* ───── MILEAGE LOG ───── */
+.mlog-card{background:var(--white);border-radius:var(--radius);padding:16px;border:1.5px solid var(--gray-200);box-shadow:var(--shadow)}
+.mlog-plate{font-size:15px;font-weight:700;color:var(--navy)}
+.mlog-stat{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin:12px 0}
+.mlog-box{border-radius:8px;padding:10px 12px;text-align:center}
+.mlog-box.blue{background:#eff6ff;border:1px solid #bfdbfe}
+.mlog-box.green{background:#d1fae5;border:1px solid #6ee7b7}
+.mlog-box.amber{background:#fef9c3;border:1px solid #fde047}
+.mlog-box.red{background:#fee2e2;border:1px solid #fca5a5}
+.mlog-val{font-size:18px;font-weight:700;color:var(--navy)}
+.mlog-lbl{font-size:11px;color:var(--gray-400);margin-top:2px}
+.mlog-bar-wrap{background:var(--gray-100);border-radius:99px;height:10px;overflow:hidden;margin:8px 0}
+.mlog-bar{height:100%;border-radius:99px;transition:width .4s}
+.mlog-bar.ok{background:var(--green)}
+.mlog-bar.warn{background:var(--amber)}
+.mlog-bar.danger{background:var(--red)}
+.mlog-history{margin-top:12px}
+.mlog-row{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:12px}
+.mlog-row:last-child{border-bottom:none}
+.mlog-date{color:var(--gray-400);min-width:90px}
+.mlog-km{font-weight:600;color:var(--navy);min-width:100px}
+.mlog-diff{color:var(--green);font-size:11px}
+.mlog-diff.high{color:var(--red)}
+
+/* ───── PRINT ───── */
+@media print {
+  /* ── ซ่อน UI ที่ไม่ต้องพิมพ์ ── */
+  .hdr, .nav, .car-grid, .btnrow, .no-print,
+  .overlay, .toast, #loginWrap, #splash,
+  .syncbar, .hdr-stats,
+  #pg-add, #pg-cars, #pg-backup, #pg-users, #pg-mileage,
+  .eye-btn, #addUserSection { display: none !important; }
+
+  /* ── reset ── */
+  *, *::before, *::after { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; box-sizing: border-box; }
+  body { background: #fff !important; margin: 0 !important; padding: 0 !important; font-size: 11px !important; font-family: 'Sarabun', Arial, sans-serif !important; }
+  html, body { height: auto !important; overflow: visible !important; }
+
+  /* ── layout ── */
+  .main {
+    padding: 0 !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding-top: 0 !important;
+  }
+
+  /* แสดงเฉพาะหน้าที่ JS กำหนด (ผ่าน class .print-target) */
+  .hidden { display: none !important; }
+  .print-target { display: block !important; }
+
+  /* ── print header — แสดงตอนพิมพ์เสมอ ── */
+  .print-hdr {
+    display: flex !important;
+    align-items: center !important;
+    gap: 12px !important;
+    margin-bottom: 14px !important;
+    border-bottom: 2px solid #1a3a5c !important;
+    padding-bottom: 10px !important;
+    page-break-after: avoid !important;
+    page-break-inside: avoid !important;
+  }
+  .print-hdr img { width: 52px; height: 52px; border-radius: 50%; flex-shrink: 0; }
+  .print-hdr-text h1 { font-size: 14px; color: #1a3a5c; margin: 0; font-weight: 700; line-height: 1.3; }
+  .print-hdr-text p { font-size: 10px; color: #555; margin: 3px 0 0; }
+  .print-hdr-text .print-date { font-size: 10px; color: #777; margin-top: 2px; }
+
+  /* ── panel ── */
+  .panel { box-shadow: none !important; border: none !important; padding: 4px 0 !important; margin-bottom: 10px !important; }
+  .ptitle { font-size: 13px !important; font-weight: 700 !important; margin-bottom: 8px !important; border-bottom: 1px solid #ddd; padding-bottom: 4px; }
+  .ptitle .btn { display: none !important; }
+
+  /* ── ตาราง ── */
+  .tbl-wrap { overflow: visible !important; }
+  table {
+    width: 100% !important; border-collapse: collapse !important;
+    table-layout: fixed !important; font-size: 10px !important;
+    word-break: break-word !important;
+  }
+  th {
+    background: #1a3a5c !important; color: #fff !important;
+    padding: 5px 6px !important; font-size: 9.5px !important;
+    border: 1px solid #1a3a5c !important; text-align: left !important;
+    white-space: nowrap !important;
+  }
+  td {
+    padding: 4px 6px !important; border: 1px solid #ccc !important;
+    vertical-align: top !important; font-size: 10px !important;
+    word-break: break-word !important; overflow-wrap: break-word !important;
+  }
+  tr { page-break-inside: avoid !important; }
+
+  /* กำหนดความกว้างคอลัมน์ตารางประวัติซ่อม */
+  table th:nth-child(1), table td:nth-child(1) { width: 12% !important; } /* วันที่ */
+  table th:nth-child(2), table td:nth-child(2) { width: 12% !important; } /* ไมล์ */
+  table th:nth-child(3), table td:nth-child(3) { width: 14% !important; } /* ประเภท */
+  table th:nth-child(4), table td:nth-child(4) { width: 40% !important; } /* รายละเอียด */
+  table th:nth-child(5), table td:nth-child(5) { width: 12% !important; } /* ไมล์ถัดไป */
+  table th:nth-child(6), table td:nth-child(6) { width: 10% !important; } /* หมายเหตุ */
+  table th:nth-child(7), table td:nth-child(7) { display: none !important; } /* ซ่อนคอลัมน์แก้ไข */
+
+  .dlist { padding-left: 0 !important; margin: 0 !important; }
+  .dlist li { font-size: 9.5px !important; line-height: 1.5 !important; }
+  .dlist li::before { content: "• "; }
+
+  /* ── badges ── */
+  .badge, .kmbadge, .nxtbadge {
+    border: 1px solid #aaa !important; padding: 1px 4px !important;
+    font-size: 9px !important; border-radius: 3px !important;
+    background: #f0f0f0 !important; color: #333 !important;
+    display: inline-block !important; white-space: nowrap !important;
+  }
+
+  /* ── alert boxes ── */
+  .alert {
+    padding: 5px 10px !important; margin-bottom: 6px !important;
+    border-left: 3px solid #aaa !important; font-size: 10px !important;
+    background: #f8f8f8 !important; color: #333 !important;
+    page-break-inside: avoid !important;
+  }
+
+  /* ── forecast cards ── */
+  .fc-card {
+    border: 1px solid #ccc !important; padding: 6px 10px !important;
+    margin-bottom: 6px !important; background: #fafafa !important;
+    page-break-inside: avoid !important; border-left: 3px solid #1a3a5c !important;
+  }
+  .fc-plate { font-size: 13px !important; font-weight: 700 !important; }
+  .fc-status { font-size: 10px !important; }
+  .fc-detail { font-size: 9.5px !important; line-height: 1.5 !important; }
+  .sixmo-box { padding: 4px 8px !important; font-size: 9.5px !important; border: 1px solid #ccc !important; background: #f5f5f5 !important; color: #333 !important; margin-top: 4px !important; }
+
+  /* ── summary ── */
+  .scards { display: grid !important; grid-template-columns: repeat(3, 1fr) !important; gap: 8px !important; margin-bottom: 12px !important; }
+  .scard { border: 1px solid #ddd !important; padding: 8px 10px !important; border-left: 3px solid #1a3a5c !important; page-break-inside: avoid !important; box-shadow: none !important; }
+  .scard .val { font-size: 18px !important; font-weight: 700 !important; }
+  .scard .sub { font-size: 9px !important; }
+
+  /* ── page settings ── */
+  .page-break-before { page-break-before: always !important; }
+  @page { margin: 12mm 10mm 10mm 15mm; size: A4 portrait; }
+}
+.print-hdr {
+  display: none; /* ซ่อนตอนใช้งานปกติ */
+}
+
+/* ───── RESPONSIVE ───── */
+@media (max-width: 700px) {
+  .hdr-stats { display: none; }
+  .fgrid { grid-template-columns: 1fr; }
+  .hdr-text h1 { font-size: 13px; }
+  .hdr-inner { padding: 8px 12px; gap: 10px; }
+  .hdr-logo { width: 46px; height: 46px; }
+  .main { padding: 12px 10px; }
+  .panel { padding: 14px 12px; }
+  .ntab { padding: 9px 11px; font-size: 12px; }
+  .btn { min-height: 44px; }
+  .ccard { min-height: 68px; }
+}
+.hidden { display: none !important; }
+.mt12 { margin-top: 12px; }
+
+/* ───── LOGIN ───── */
+#loginWrap {
+  position:fixed;inset:0;background:linear-gradient(135deg,#0f2540 0%,#1a3a5c 50%,#1a5c3a 100%);
+  z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px;
+}
+.login-box {
+  background:#fff;border-radius:16px;padding:36px 32px;width:100%;max-width:420px;
+  box-shadow:0 20px 60px rgba(0,0,0,0.3);
+}
+.login-logo {text-align:center;margin-bottom:20px;}
+.login-logo img {width:72px;height:72px;border-radius:50%;border:3px solid var(--navy);}
+.login-title {text-align:center;font-size:17px;font-weight:700;color:var(--navy);margin-bottom:4px;}
+.login-sub {text-align:center;font-size:12px;color:var(--gray-400);margin-bottom:24px;}
+.login-err {background:#fee2e2;border-left:4px solid var(--red);border-radius:7px;padding:10px 14px;font-size:13px;color:#7f1d1d;margin-bottom:14px;display:none;}
+.login-err.show {display:block;}
+.login-ok {background:#d1fae5;border-left:4px solid var(--green);border-radius:7px;padding:10px 14px;font-size:13px;color:#065f46;margin-bottom:14px;display:none;}
+.login-ok.show {display:block;}
+.input-icon-wrap {position:relative;}
+.input-icon-wrap input {padding-right:38px;}
+.input-icon-wrap .eye-btn {
+  position:absolute;right:10px;top:50%;transform:translateY(-50%);
+  background:none;border:none;cursor:pointer;font-size:16px;color:var(--gray-400);
+}
+.login-link {background:none;border:none;color:var(--blue);font-size:12px;cursor:pointer;font-family:inherit;text-decoration:underline;}
+.login-divider {text-align:center;font-size:12px;color:var(--gray-400);margin:16px 0;}
+.role-badge {display:inline-block;padding:2px 10px;border-radius:12px;font-size:11px;font-weight:700;}
+.role-admin {background:#dbeafe;color:#1e40af;}
+.role-user {background:#d1fae5;color:#065f46;}
+.role-readonly {background:#f1f5f9;color:#475569;}
+/* ───── USER MGMT ───── */
+.user-row {display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid #f1f5f9;}
+.user-row:last-child {border-bottom:none;}
+.user-info {flex:1;}
+.user-name {font-size:14px;font-weight:600;color:var(--navy);}
+.user-meta {font-size:11px;color:var(--gray-400);}
+
+</style>
+</head>
+<body>
+
+<!-- LOGIN WRAP -->
+<div id="loginWrap">
+  <div class="login-box" id="loginBox">
+    <!-- เริ่มด้วยหน้า Login -->
+    <div id="loginView">
+      <div class="login-logo"><img id="loginLogo" src="" alt="โลโก้"></div>
+      <div class="login-title">โรงพยาบาลนิคมพัฒนา</div>
+      <div class="login-sub">ระบบบันทึกการซ่อมบำรุงรถยนต์ราชการ</div>
+      <div class="login-err" id="loginErr"></div>
+      <div class="fg" style="margin-bottom:12px">
+        <label>ชื่อผู้ใช้ (Username)</label>
+        <input type="text" id="lgUser" placeholder="กรอก username" autocomplete="username"
+          onkeydown="if(event.key==='Enter')document.getElementById('lgPass').focus()">
+      </div>
+      <div class="fg" style="margin-bottom:6px">
+        <label>รหัสผ่าน</label>
+        <div class="input-icon-wrap">
+          <input type="password" id="lgPass" placeholder="กรอกรหัสผ่าน" autocomplete="current-password"
+            onkeydown="if(event.key==='Enter')doLogin()">
+          <button class="eye-btn" type="button" onclick="togglePwd('lgPass',this)">👁</button>
+        </div>
+      </div>
+      <div style="text-align:right;margin-bottom:16px">
+        <button class="login-link" onclick="showView('forgotView')">ลืมรหัสผ่าน?</button>
+      </div>
+      <button class="btn btn-primary" style="width:100%;justify-content:center;font-size:15px;min-height:46px" onclick="doLogin()">
+        🔐 เข้าสู่ระบบ
+      </button>
+      <div class="login-divider">— ระบบสำหรับเจ้าหน้าที่โรงพยาบาลนิคมพัฒนา —</div>
+    </div>
+
+    <!-- หน้า ลืมรหัสผ่าน -->
+    <div id="forgotView" class="hidden">
+      <div class="login-title" style="margin-bottom:6px">🔑 กู้คืนรหัสผ่าน</div>
+      <div class="login-sub" style="margin-bottom:20px">ใส่ username และ recovery code ที่ได้รับตอนสมัคร</div>
+      <div class="login-err" id="forgotErr"></div>
+      <div class="login-ok" id="forgotOk"></div>
+      <div class="fg" style="margin-bottom:12px">
+        <label>ชื่อผู้ใช้ (Username)</label>
+        <input type="text" id="fgUser" placeholder="username">
+      </div>
+      <div class="fg" style="margin-bottom:12px">
+        <label>Recovery Code (รหัสกู้คืน)</label>
+        <input type="text" id="fgCode" placeholder="recovery code ที่บันทึกไว้">
+      </div>
+      <div class="fg" style="margin-bottom:12px">
+        <label>รหัสผ่านใหม่</label>
+        <div class="input-icon-wrap">
+          <input type="password" id="fgNew" placeholder="รหัสผ่านใหม่ (อย่างน้อย 6 ตัว)">
+          <button class="eye-btn" type="button" onclick="togglePwd('fgNew',this)">👁</button>
+        </div>
+      </div>
+      <button class="btn btn-success" style="width:100%;justify-content:center;min-height:44px" onclick="doForgot()">
+        ✅ ตั้งรหัสผ่านใหม่
+      </button>
+      <div style="text-align:center;margin-top:12px">
+        <button class="login-link" onclick="showView('loginView')">← กลับหน้าเข้าสู่ระบบ</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- SPLASH -->
+<div id="splash">
+  <img id="splashLogo" src="" alt="โลโก้">
+  <div>
+    <h2>โรงพยาบาลนิคมพัฒนา</h2>
+    <p>ระบบบันทึกการซ่อมบำรุงรถยนต์ราชการ</p>
+  </div>
+  <div class="spinner"></div>
+  <div id="splashMsg">กำลังเชื่อมต่อ Google Sheets...</div>
+</div>
+
+<!-- PRINT HEADER -->
+
+
+<!-- HEADER -->
+<div class="hdr no-print">
+  <div class="hdr-inner">
+    <div class="hdr-logo"><img id="hdrLogo" src="" alt="โลโก้"></div>
+    <div class="hdr-text">
+      <h1>บันทึกการซ่อมบำรุงรถยนต์ราชการ</h1>
+      <p>โรงพยาบาลนิคมพัฒนา จังหวัดระยอง</p>
+    </div>
+    <div class="hdr-stats">
+      <div class="hstat"><div class="n" id="stCars">0</div><div class="l">คันรถ</div></div>
+      <div class="hstat"><div class="n" id="stRecs">0</div><div class="l">รายการ</div></div>
+      <div class="hstat alert"><div class="n" id="stAlerts">0</div><div class="l">แจ้งเตือน</div></div>
+    </div>
+  </div>
+  <div class="syncbar">
+    <span class="synctxt" id="syncTxt">⚪ กำลังเชื่อมต่อ...</span>
+    <button class="syncbtn" onclick="doManualSync()">🔄 ซิงค์ตอนนี้</button>
+    <span style="color:rgba(255,255,255,.6);font-size:11px" id="curUserBadge"></span>
+    <button class="syncbtn" onclick="doLogout()" style="background:rgba(220,38,38,.3);border-color:rgba(220,38,38,.5)">🚪 ออกจากระบบ</button>
+  </div>
+  <div class="nav" id="nav">
+    <div class="ntab on" data-pg="records" onclick="gotoPage('records')">📋 บันทึกการซ่อม</div>
+    <div class="ntab" data-pg="add" onclick="gotoPage('add')">➕ เพิ่มรายการ</div>
+    <div class="ntab" data-pg="forecast" onclick="gotoPage('forecast')">🔮 คาดการณ์</div>
+    <div class="ntab" data-pg="summary" onclick="gotoPage('summary')">📊 สรุปภาพรวม</div>
+    <div class="ntab" data-pg="cars" onclick="gotoPage('cars')">🚗 ทะเบียนรถ</div>
+    <div class="ntab" data-pg="backup" onclick="gotoPage('backup')">💾 ข้อมูล</div>
+    <div class="ntab" data-pg="mileage" onclick="gotoPage('mileage')">📍 บันทึกไมล์</div>
+    <div class="ntab" id="tabUsers" data-pg="users" onclick="gotoPage('users')" style="display:none">👥 ผู้ใช้งาน</div>
+  </div>
+</div>
+
+<div class="main">
+<!-- PRINT HEADER — อยู่ใน main เพื่อ render ต่อเนื่องกับเนื้อหา -->
+<div class="print-hdr" id="printHdr">
+  <img id="printLogo" src="" alt="โลโก้">
+  <div class="print-hdr-text">
+    <h1>บันทึกการซ่อมบำรุงรถยนต์ราชการ — โรงพยาบาลนิคมพัฒนา จังหวัดระยอง</h1>
+    <p id="printSub">เอกสารสรุปข้อมูล</p>
+    <div class="print-date" id="printDate"></div>
+  </div>
+</div>
+<!-- RECORDS -->
+<div id="pg-records">
+  <div class="car-grid no-print" id="carGrid"></div>
+  <div id="carDetail"></div>
+</div>
+
+<!-- ADD -->
+<div id="pg-add" class="hidden">
+<div class="panel">
+  <div class="ptitle"><div class="ptitle-left">➕ เพิ่มรายการซ่อมบำรุง</div></div>
+  <div class="fg full mt12">
+    <label>📂 เลือกจากประวัติที่เคยซ่อม (เติมข้อมูลอัตโนมัติ)</label>
+    <select id="histSel" onchange="applyHist()"><option value="">-- เลือกทะเบียนก่อน --</option></select>
+  </div>
+  <div class="fgrid mt12">
+    <div class="fg">
+      <label>ทะเบียนรถ *</label>
+      <select id="addCar" onchange="onAddCarChange()"><option value="">-- เลือกทะเบียน --</option></select>
+    </div>
+    <div class="fg">
+      <label>วันที่เข้าซ่อม *</label>
+      <input type="date" id="addDate" onchange="updateAddDateBE()">
+      <span class="hint" id="addDateBE" style="color:#059669;font-weight:600;font-size:12px;margin-top:2px"></span>
+    </div>
+    <div class="fg" id="grpMile">
+      <label>เลขไมล์ปัจจุบัน (กม.)</label>
+      <input type="number" id="addMile" placeholder="เช่น 150000" oninput="autoNextMile()">
+    </div>
+    <div class="fg" id="grpNext">
+      <label>ไมล์ครั้งถัดไป (กม.)</label>
+      <input type="number" id="addNext" placeholder="+10,000 อัตโนมัติ">
+    </div>
+    <div class="fg">
+      <label>ประเภทการซ่อม</label>
+      <select id="addType" onchange="onTypeChange()">
+        <option value="เช็คระยะตามรอบ">เช็คระยะตามรอบ</option>
+        <option value="เช็คระยะทุก 6 เดือน">เช็คระยะทุก 6 เดือน</option>
+        <option value="ซ่อมฉุกเฉิน">ซ่อมฉุกเฉิน (ไม่นับระยะ)</option>
+        <option value="ซ่อมทั่วไป">ซ่อมทั่วไป (ไม่นับระยะ)</option>
+        <option value="อื่นๆ">อื่นๆ</option>
+      </select>
+    </div>
+    <div class="fg">
+      <label>หมายเหตุ / นัดหมาย</label>
+      <input type="text" id="addNote" placeholder="หมายเหตุ...">
+    </div>
+    <div class="fg full">
+      <label>รายละเอียดการซ่อม</label>
+      <span class="hint">กดเลือกรายการด่วน หรือพิมพ์เองด้านล่าง</span>
+      <div class="qi-wrap" id="qiWrap"></div>
+      <div class="deditor" id="deditor"></div>
+      <button class="dadd" onclick="addDetailRow()">+ เพิ่มรายการ</button>
+    </div>
+  </div>
+  <div class="btnrow">
+    <button class="btn btn-success" onclick="saveRecord()">💾 บันทึก</button>
+    <button class="btn btn-outline" onclick="clearAddForm()">🗑 ล้างข้อมูล</button>
+  </div>
+</div>
+</div>
+
+<!-- FORECAST -->
+<div id="pg-forecast" class="hidden">
+<div class="panel">
+  <div class="ptitle">
+    <div class="ptitle-left">🔮 คาดการณ์และแจ้งเตือน</div>
+    <button class="btn btn-outline btn-sm no-print" onclick="doPrint('forecast')">🖨 พิมพ์</button>
+  </div>
+  <div id="fcContent"></div>
+</div>
+</div>
+
+<!-- SUMMARY -->
+<div id="pg-summary" class="hidden">
+<div id="sumContent"></div>
+</div>
+
+<!-- CARS -->
+<div id="pg-cars" class="hidden">
+<div class="panel">
+  <div class="ptitle"><div class="ptitle-left">🚗 จัดการทะเบียนรถ</div></div>
+  <div class="fgrid" style="max-width:580px">
+    <div class="fg"><label>ทะเบียนรถ *</label><input type="text" id="ncPlate" placeholder="เช่น กข 1234 รย."></div>
+    <div class="fg"><label>ประเภทรถ</label><input type="text" id="ncType" placeholder="กระบะ / ตู้ / เก๋ง"></div>
+    <div class="fg"><label>ยี่ห้อ / รุ่น</label><input type="text" id="ncModel" placeholder="Toyota Hilux Revo"></div>
+    <div class="fg"><label>ปีที่ซื้อ (พ.ศ.)</label><input type="number" id="ncYear" placeholder="2560"></div>
+  </div>
+  <div class="btnrow"><button class="btn btn-primary" onclick="addCar()">➕ เพิ่มทะเบียนรถ</button></div>
+  <div id="carList" class="mt12"></div>
+</div>
+</div>
+
+<!-- BACKUP -->
+<div id="pg-backup" class="hidden">
+<div class="panel">
+  <div class="ptitle"><div class="ptitle-left">💾 ระบบข้อมูล / สำรอง / นำเข้า-ส่งออก</div></div>
+
+  <div class="bcard" style="border-color:#86efac;background:#f0fdf4">
+    <h4 style="color:#065f46">🟢 Google Sheets — ฐานข้อมูลกลาง (เรียลไทม์)</h4>
+    <p>ข้อมูลทั้งหมดเก็บใน Google Sheets ถาวร ไม่หาย ซิงค์อัตโนมัติทุก 20 วินาที ทุกเครื่องที่เปิดโปรแกรมจะเห็นข้อมูลล่าสุดพร้อมกัน</p>
+    <div class="btnrow" style="margin-top:0">
+      <button class="btn btn-primary btn-sm" onclick="doManualSync()">🔄 ดึงข้อมูลล่าสุด</button>
+      <button class="btn btn-amber btn-sm" onclick="pushAllToSheets()">📤 ส่งข้อมูลทั้งหมดขึ้น Sheets</button>
+    </div>
+  </div>
+
+  <div class="bcard" style="border-color:#fbbf24;background:#fffbeb">
+    <h4 style="color:#92400e">📦 กู้คืนข้อมูลตั้งต้น 11 คัน จากไฟล์ Excel</h4>
+    <p>ถ้า Google Sheets ยังว่างเปล่า หรือต้องการนำประวัติซ่อมบำรุงเดิมทั้งหมดขึ้น Sheets</p>
+    <div class="btnrow" style="margin-top:0">
+      <button class="btn btn-amber btn-sm" onclick="restoreDefault()">📦 กู้คืนข้อมูลเดิม 11 คัน (เขียนทับ Sheets)</button>
+      <button class="btn btn-primary btn-sm" onclick="mergeDefault()">🔀 เพิ่มข้อมูลเดิม (ไม่ลบของใหม่)</button>
+    </div>
+  </div>
+
+  <div class="bcard">
+    <h4>📤 ส่งออก Export</h4>
+    <p>บันทึกสำรองลงเครื่อง เปิดได้แม้ออฟไลน์</p>
+    <div class="btnrow" style="margin-top:0">
+      <button class="btn btn-success btn-sm" onclick="exportJSON()">📥 บันทึกเป็น .json</button>
+      <button class="btn btn-primary btn-sm" onclick="exportCSV()">📊 บันทึกเป็น .csv (Excel)</button>
+    </div>
+  </div>
+
+  <div class="bcard">
+    <h4>📥 นำเข้า Import</h4>
+    <p>โหลดไฟล์สำรอง .json กลับเข้าระบบ <b style="color:var(--red)">จะแทนที่ข้อมูลปัจจุบัน</b></p>
+    <label class="file-pick">📁 เลือกไฟล์ .json<input type="file" accept=".json" style="display:none" onchange="importJSON(event)"></label>
+  </div>
+
+  <div class="bcard" style="border-color:#fca5a5">
+    <h4 style="color:#991b1b">⚠️ รีเซ็ตข้อมูล</h4>
+    <p>ลบทุกอย่างแล้วเริ่มใหม่ด้วยข้อมูลตั้งต้น</p>
+    <button class="btn btn-danger" onclick="resetAll()">🗑 รีเซ็ตข้อมูลทั้งหมด</button>
+  </div>
+
+  <div class="bcard" style="background:#f0f9ff;border-color:#bae6fd">
+    <h4>ℹ️ สถานะข้อมูล</h4>
+    <div id="backupStat" style="font-size:12.5px;color:var(--navy);line-height:1.9;font-weight:600"></div>
+  </div>
+</div>
+</div>
+
+
+<!-- MILEAGE LOG PAGE -->
+<div id="pg-mileage" class="hidden">
+<div class="panel">
+  <div class="ptitle"><div class="ptitle-left">📍 บันทึกและติดตามเลขไมล์รถ</div></div>
+
+  <!-- ฟอร์มบันทึกไมล์ -->
+  <div style="background:#f8fafc;border:1.5px solid var(--gray-200);border-radius:10px;padding:16px;margin-bottom:20px">
+    <div style="font-size:13.5px;font-weight:600;color:var(--navy);margin-bottom:12px">📝 บันทึกเลขไมล์วันนี้</div>
+    <div class="fgrid" style="max-width:600px">
+      <div class="fg">
+        <label>ทะเบียนรถ *</label>
+        <select id="mlCar" onchange="onMlCarChange();onMlKmInput()"><option value="">-- เลือกทะเบียน --</option></select>
+      </div>
+      <div class="fg">
+        <label>วันที่ *</label>
+        <input type="date" id="mlDate" onchange="updateMlDateBE();onMlKmInput()">
+        <span class="hint" id="mlDateBE" style="color:#059669;font-weight:600;font-size:12px;margin-top:2px"></span>
+      </div>
+      <div class="fg">
+        <label>เลขไมล์ปัจจุบัน (กม.) *</label>
+        <input type="number" id="mlKm" placeholder="เช่น 165000" oninput="onMlKmInput()">
+      </div>
+      <div class="fg">
+        <label>หมายเหตุ (ไม่บังคับ)</label>
+        <input type="text" id="mlNote" placeholder="เช่น เติมน้ำมัน, ออกเดินทางไกล">
+      </div>
+    </div>
+    <div id="mlPreview" style="display:none;margin-top:10px;padding:10px 14px;background:#eff6ff;border-radius:8px;font-size:13px;color:var(--navy)"></div>
+    <div class="btnrow">
+      <button class="btn btn-success" onclick="saveMileageLog()">💾 บันทึกไมล์</button>
+      <button class="btn btn-outline" onclick="clearMlForm()">ล้างข้อมูล</button>
+    </div>
+  </div>
+
+  <!-- แสดงสถานะรถทุกคัน -->
+  <div style="font-size:14px;font-weight:600;color:var(--navy);margin-bottom:12px">📊 สถานะไมล์รถทุกคัน</div>
+  <div id="mlDashboard"></div>
+</div>
+</div>
+
+<!-- USERS (admin only) -->
+<div id="pg-users" class="hidden">
+<div class="panel">
+  <div class="ptitle"><div class="ptitle-left">👥 จัดการผู้ใช้งาน</div></div>
+  <div id="curUserInfo" style="margin-bottom:18px;padding:12px;background:#eff6ff;border-radius:9px;font-size:13px"></div>
+
+  <!-- เพิ่มผู้ใช้ใหม่ (admin เท่านั้น) -->
+  <div id="addUserSection">
+    <div class="ptitle" style="font-size:13px;margin-bottom:12px"><div class="ptitle-left">➕ เพิ่มผู้ใช้ใหม่</div></div>
+    <div class="fgrid" style="max-width:600px">
+      <div class="fg"><label>ชื่อผู้ใช้ (Username) *</label><input type="text" id="nuUser" placeholder="ตัวอักษร+ตัวเลข เท่านั้น"></div>
+      <div class="fg"><label>ชื่อ-นามสกุล *</label><input type="text" id="nuName" placeholder="ชื่อที่แสดงในระบบ"></div>
+      <div class="fg">
+        <label>รหัสผ่าน * (อย่างน้อย 6 ตัว)</label>
+        <div class="input-icon-wrap">
+          <input type="password" id="nuPass" placeholder="รหัสผ่าน">
+          <button class="eye-btn" type="button" onclick="togglePwd('nuPass',this)">👁</button>
+        </div>
+      </div>
+      <div class="fg">
+        <label>สิทธิ์การใช้งาน</label>
+        <select id="nuRole">
+          <option value="user">👤 ผู้ใช้ทั่วไป (บันทึก/แก้ไขได้)</option>
+          <option value="readonly">👁 ดูอย่างเดียว</option>
+          <option value="admin">⭐ ผู้ดูแลระบบ (Admin)</option>
+        </select>
+      </div>
+    </div>
+    <div class="login-ok" id="nuOk" style="margin-top:12px;max-width:600px"></div>
+    <div class="login-err" id="nuErr" style="margin-top:12px;max-width:600px"></div>
+    <div class="btnrow"><button class="btn btn-success" onclick="addUser()">➕ เพิ่มผู้ใช้</button></div>
+  </div>
+
+  <div style="margin-top:24px">
+    <div class="ptitle" style="font-size:13px;margin-bottom:12px"><div class="ptitle-left">📋 รายชื่อผู้ใช้ทั้งหมด</div></div>
+    <div id="userList"></div>
+  </div>
+
+  <!-- เปลี่ยนรหัสผ่านตัวเอง -->
+  <div style="margin-top:24px;border-top:1px solid var(--gray-200);padding-top:20px">
+    <div class="ptitle" style="font-size:13px;margin-bottom:12px"><div class="ptitle-left">🔑 เปลี่ยนรหัสผ่านของฉัน</div></div>
+    <div class="fgrid" style="max-width:500px">
+      <div class="fg">
+        <label>รหัสผ่านปัจจุบัน</label>
+        <div class="input-icon-wrap">
+          <input type="password" id="cpOld" placeholder="รหัสผ่านเดิม">
+          <button class="eye-btn" type="button" onclick="togglePwd('cpOld',this)">👁</button>
+        </div>
+      </div>
+      <div class="fg">
+        <label>รหัสผ่านใหม่ (อย่างน้อย 6 ตัว)</label>
+        <div class="input-icon-wrap">
+          <input type="password" id="cpNew" placeholder="รหัสผ่านใหม่">
+          <button class="eye-btn" type="button" onclick="togglePwd('cpNew',this)">👁</button>
+        </div>
+      </div>
+    </div>
+    <div class="login-ok" id="cpOk" style="margin-top:12px;max-width:500px"></div>
+    <div class="login-err" id="cpErr" style="margin-top:12px;max-width:500px"></div>
+    <div class="btnrow"><button class="btn btn-primary" onclick="changeMyPassword()">🔑 เปลี่ยนรหัสผ่าน</button></div>
+  </div>
+</div>
+</div>
+
+</div><!-- /main -->
+
+<!-- EDIT MODAL -->
+<div class="overlay" id="editOverlay">
+<div class="modal">
+  <h2>✏️ แก้ไขรายการซ่อม <button class="modal-close" onclick="closeModal()">×</button></h2>
+  <div class="fgrid">
+    <div class="fg">
+      <label>วันที่</label>
+      <input type="date" id="eDate" onchange="updateEditDateBE()">
+      <span class="hint" id="editDateBE" style="color:#059669;font-weight:600;font-size:12px;margin-top:2px"></span>
+    </div>
+    <div class="fg"><label>เลขไมล์</label><input type="number" id="eMile"></div>
+    <div class="fg"><label>ไมล์ถัดไป</label><input type="number" id="eNext"></div>
+    <div class="fg">
+      <label>ประเภท</label>
+      <select id="eType">
+        <option value="เช็คระยะตามรอบ">เช็คระยะตามรอบ</option>
+        <option value="เช็คระยะทุก 6 เดือน">เช็คระยะทุก 6 เดือน</option>
+        <option value="ซ่อมฉุกเฉิน">ซ่อมฉุกเฉิน</option>
+        <option value="ซ่อมทั่วไป">ซ่อมทั่วไป</option>
+        <option value="อื่นๆ">อื่นๆ</option>
+      </select>
+    </div>
+    <div class="fg full"><label>หมายเหตุ</label><input type="text" id="eNote"></div>
+    <div class="fg full"><label>รายละเอียด (แต่ละบรรทัด = 1 รายการ)</label><textarea id="eDetails" rows="6"></textarea></div>
+  </div>
+  <div class="btnrow">
+    <button class="btn btn-success" onclick="saveEdit()">💾 บันทึก</button>
+    <button class="btn btn-outline" onclick="closeModal()">ยกเลิก</button>
+  </div>
+</div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+
+
+// ═══════════════════════════════════════════
+//  MILEAGE LOG SYSTEM
+// ═══════════════════════════════════════════
+// DB.mileageLogs = [{ id, carId, date(BE), km, note, createdAt }]
+const ML_KEY = 'car_maint_mileage_v1';
+
+function loadMileageLogs(){
+  try{
+    const r=localStorage.getItem(ML_KEY);
+    return r?JSON.parse(r):[];
+  }catch(e){return[];}
+}
+function saveMileageLogs(logs){
+  try{localStorage.setItem(ML_KEY,JSON.stringify(logs));}catch(e){}
+}
+function getCarMileageLogs(carId){
+  return loadMileageLogs().filter(l=>l.carId===carId).sort((a,b)=>a.date>b.date?1:-1);
+}
+
+// อัตราการวิ่งเฉลี่ย km/วัน จากบันทึกไมล์ (ถ้ามี) หรือจากประวัติซ่อม
+function calcAvgKmPerDay(carId){
+  const mlogs=getCarMileageLogs(carId);
+  // ใช้ข้อมูลบันทึกไมล์ถ้ามีมากกว่า 1 รายการ
+  if(mlogs.length>=2){
+    const first=mlogs[0],last=mlogs[mlogs.length-1];
+    const days=(new Date(beToInput(last.date))-new Date(beToInput(first.date)))/864e5;
+    const km=last.km-first.km;
+    if(days>0&&km>0) return km/days;
+  }
+  // fallback: ใช้ประวัติซ่อมบำรุง
+  const recs=carRecs(carId).filter(r=>r.mileage&&isPeriodic(r.type));
+  if(recs.length>=2){
+    const f=recs[0],l=recs[recs.length-1];
+    const days=(new Date(beToInput(l.date))-new Date(beToInput(f.date)))/864e5;
+    const km=l.mileage-f.mileage;
+    if(days>0&&km>0) return km/days;
+  }
+  return null;
+}
+
+// ไมล์ปัจจุบันประมาณการ = ไมล์ล่าสุดที่รู้ + (วันที่ผ่านไป × km/วัน)
+function estimateCurrentKm(carId){
+  const mlogs=getCarMileageLogs(carId);
+  const recs=carRecs(carId).filter(r=>r.mileage);
+  // หาจุดอ้างอิงล่าสุด (บันทึกไมล์ หรือ ประวัติซ่อม)
+  let refKm=null, refDate=null;
+  if(mlogs.length){
+    const last=mlogs[mlogs.length-1];
+    refKm=last.km; refDate=beToInput(last.date);
+  }
+  if(recs.length){
+    const last=recs[recs.length-1];
+    const recDate=beToInput(last.date);
+    if(!refDate||recDate>refDate){ refKm=last.mileage; refDate=recDate; }
+  }
+  if(!refKm||!refDate) return null;
+  const avg=calcAvgKmPerDay(carId);
+  if(!avg) return {km:refKm, estimated:false, refDate, avgPerDay:null};
+  const today=new Date(); today.setHours(0,0,0,0);
+  const ref=new Date(refDate); ref.setHours(0,0,0,0);
+  const days=Math.max(0,Math.round((today-ref)/864e5));
+  return {km:Math.round(refKm+avg*days), estimated:days>0, refDate, avgPerDay:avg, daysAgo:days};
+}
+
+// ── Render ──────────────────────────────────────────────────
+function initMileagePage(){
+  // populate car select
+  const sel=document.getElementById('mlCar');
+  if(!sel) return;
+  sel.innerHTML='<option value="">-- เลือกทะเบียน --</option>'+
+    DB.cars.map(c=>`<option value="${c.id}">${c.plate}</option>`).join('');
+  // วันที่วันนี้
+  const di=document.getElementById('mlDate');
+  if(di){ di.value=todayCE(); updateMlDateBE(); }
+  renderMlDashboard();
+}
+
+function onMlCarChange(){ onMlKmInput(); }
+function updateMlDateBE(){
+  const v=document.getElementById('mlDate')?.value;
+  const lbl=document.getElementById('mlDateBE');
+  if(!lbl) return;
+  if(!v){lbl.textContent='';return;}
+  const be=inputToBE(v);
+  lbl.textContent=be?'= '+thaiDate(be)+' (พ.ศ.)':'❌ วันที่ไม่ถูกต้อง';
+  lbl.style.color=be?'#059669':'#dc2626';
+  onMlKmInput();
+}
+
+// แสดง preview ก่อนบันทึก
+function onMlKmInput(){
+  const carId=document.getElementById('mlCar')?.value;
+  const kmVal=parseInt(document.getElementById('mlKm')?.value);
+  const prev=document.getElementById('mlPreview');
+  if(!prev) return;
+  if(!carId||!kmVal){prev.style.display='none';return;}
+
+  const est=estimateCurrentKm(carId);
+  const fc=forecast(carId);
+  let html='';
+
+  if(est&&est.km){
+    const diff=kmVal-est.km;
+    const diffStr=diff>=0?`+${diff.toLocaleString('th-TH')}`:`${diff.toLocaleString('th-TH')}`;
+    html+=`ไมล์ประมาณการ: <b>${est.km.toLocaleString('th-TH')} กม.</b> → กรอก: <b>${kmVal.toLocaleString('th-TH')} กม.</b> (ต่าง ${diffStr} กม.)<br>`;
+  }
+
+  if(fc.nextMile&&kmVal){
+    const rem=fc.nextMile-kmVal;
+    const avg=calcAvgKmPerDay(carId);
+    if(rem>0){
+      html+=`เหลืออีก <b>${rem.toLocaleString('th-TH')} กม.</b> ถึงกำหนดซ่อม (${fmtKm(fc.nextMile)})`;
+      if(avg){
+        const daysLeft=Math.round(rem/avg);
+        const estDt=new Date(); estDt.setDate(estDt.getDate()+daysLeft);
+        html+=` — คาดว่าถึงกำหนดประมาณ <b>${estDt.toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'})}</b>`;
+      }
+    } else {
+      html+=`<span style="color:#dc2626;font-weight:600">⚠️ เลยกำหนดซ่อมแล้ว ${Math.abs(rem).toLocaleString('th-TH')} กม. — ควรนัดซ่อมโดยด่วน</span>`;
+    }
+  }
+
+  if(html){ prev.innerHTML=html; prev.style.display='block'; }
+  else { prev.style.display='none'; }
+}
+
+function saveMileageLog(){
+  const carId=document.getElementById('mlCar')?.value;
+  const dateInput=document.getElementById('mlDate')?.value;
+  const kmVal=parseInt(document.getElementById('mlKm')?.value);
+  const note=document.getElementById('mlNote')?.value||'';
+
+  if(!carId){alert('กรุณาเลือกทะเบียนรถ');return;}
+  if(!dateInput){alert('กรุณาเลือกวันที่');return;}
+  if(!kmVal||kmVal<=0){alert('กรุณากรอกเลขไมล์ที่ถูกต้อง');return;}
+
+  const beDate=inputToBE(dateInput);
+  if(!beDate){alert('วันที่ไม่ถูกต้อง');return;}
+
+  const logs=loadMileageLogs();
+
+  // ตรวจ logic: ไมล์ใหม่ต้องมากกว่าไมล์ล่าสุด (ป้องกันกรอกผิด)
+  const prevLogs=logs.filter(l=>l.carId===carId).sort((a,b)=>a.date>b.date?1:-1);
+  if(prevLogs.length){
+    const lastLog=prevLogs[prevLogs.length-1];
+    if(kmVal<lastLog.km&&beDate>lastLog.date){
+      if(!confirm(`ไมล์ที่กรอก (${kmVal.toLocaleString('th-TH')}) น้อยกว่าบันทึกล่าสุด (${lastLog.km.toLocaleString('th-TH')}) ยืนยันว่าถูกต้อง?`)) return;
+    }
+  }
+
+  logs.push({
+    id:'ml'+Date.now(),
+    carId, date:beDate, km:kmVal, note,
+    createdAt:new Date().toISOString()
+  });
+  saveMileageLogs(logs);
+  clearMlForm();
+  renderMlDashboard();
+  toast(`✅ บันทึกไมล์ ${kmVal.toLocaleString('th-TH')} กม. เรียบร้อยแล้ว กำลังซิงค์...`);
+  pushMileageLogs(); // ส่งขึ้น Sheets ทันที (ไม่ต้องรอ poll)
+}
+
+function clearMlForm(){
+  const di=document.getElementById('mlDate');
+  if(di){ di.value=todayCE(); updateMlDateBE(); }
+  const km=document.getElementById('mlKm');
+  if(km) km.value='';
+  const nt=document.getElementById('mlNote');
+  if(nt) nt.value='';
+  const pr=document.getElementById('mlPreview');
+  if(pr) pr.style.display='none';
+}
+
+function deleteMileageLog(id){
+  if(!confirm('ลบบันทึกไมล์นี้หรือไม่?')) return;
+  const logs=loadMileageLogs().filter(l=>l.id!==id);
+  saveMileageLogs(logs);
+  renderMlDashboard();
+  toast('🗑 ลบบันทึกไมล์แล้ว');
+  pushMileageLogs();
+}
+
+function renderMlDashboard(){
+  const el=document.getElementById('mlDashboard');
+  if(!el) return;
+  el.innerHTML='';
+
+  DB.cars.forEach(car=>{
+    const fc=forecast(car.id);
+    const est=estimateCurrentKm(car.id);
+    const mlogs=getCarMileageLogs(car.id);
+    const avg=calcAvgKmPerDay(car.id);
+
+    // คำนวณ % progress
+    let pct=0, barCls='ok', remKm=null, estDate=null;
+    // ยึดไมล์ครั้งถัดไปจาก forecast (ซึ่งยึดจาก nextMileage ที่บันทึกไว้)
+    const lastServiceKm=(()=>{
+      // หา record ตามรอบก่อนหน้า record ที่มี nextMileage (เป็นจุดอ้างอิง)
+      const recs=carRecs(car.id).filter(r=>r.mileage&&isPeriodic(r.type));
+      const recWithNext=[...carRecs(car.id)].filter(r=>isPeriodic(r.type)).reverse().find(r=>r.nextMileage);
+      if(recWithNext&&recWithNext.mileage) return recWithNext.mileage;
+      return recs.length?recs[recs.length-1].mileage:null;
+    })();
+    const curKm=est?est.km:null;
+    const nextKm=fc.nextMile;
+    if(lastServiceKm&&nextKm&&curKm){
+      const total=nextKm-lastServiceKm;
+      const used=curKm-lastServiceKm;
+      pct=Math.min(100,Math.max(0,Math.round(used/total*100)));
+      remKm=Math.max(0,nextKm-curKm);
+      if(pct>=100||remKm<=0) barCls='danger';
+      else if(pct>=80||remKm<=WARN) barCls='warn';
+      if(avg&&remKm>0){
+        const d=Math.round(remKm/avg);
+        estDate=new Date(); estDate.setDate(estDate.getDate()+d);
+      }
+    }
+
+    const recentLogs=mlogs.slice(-5).reverse();
+    const logsHtml=recentLogs.map((l,i,arr)=>{
+      const prev=arr[i+1];
+      const diffStr=prev?`+${(l.km-prev.km).toLocaleString('th-TH')} กม.`:'—';
+      const diffCls=(l.km-(prev?.km||l.km))>500?'high':'';
+      return `<div class="mlog-row">
+        <div class="mlog-date">${thaiDate(l.date)}</div>
+        <div class="mlog-km">${l.km.toLocaleString('th-TH')} กม.</div>
+        <div class="mlog-diff ${diffCls}">${diffStr}${l.note?` • ${l.note}`:''}</div>
+        <button class="btn btn-danger" style="margin-left:auto" onclick="deleteMileageLog('${l.id}')">🗑</button>
+      </div>`;
+    }).join('');
+
+    const div=document.createElement('div');
+    div.className='mlog-card';
+    div.style.marginBottom='14px';
+    div.innerHTML=`
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+        <div class="mlog-plate">🚗 ${car.plate}</div>
+        <button class="btn btn-outline btn-sm" onclick="document.getElementById('mlCar').value='${car.id}';onMlCarChange();document.getElementById('mlKm').focus()">+ บันทึกไมล์</button>
+      </div>
+      <div class="mlog-stat">
+        <div class="mlog-box blue">
+          <div class="mlog-val">${curKm?curKm.toLocaleString('th-TH'):'-'}</div>
+          <div class="mlog-lbl">${est?.estimated?'ไมล์ประมาณการ* (กม.)':'ไมล์จริงล่าสุด (กม.)'}</div>
+        </div>
+        <div class="mlog-box ${barCls==='danger'?'red':barCls==='warn'?'amber':'green'}">
+          <div class="mlog-val">${remKm!=null?remKm.toLocaleString('th-TH'):'-'}</div>
+          <div class="mlog-lbl">เหลืออีก (กม.)</div>
+        </div>
+        <div class="mlog-box ${avg?'blue':''}">
+          <div class="mlog-val">${avg?Math.round(avg*7).toLocaleString('th-TH'):'-'}</div>
+          <div class="mlog-lbl">เฉลี่ย กม./สัปดาห์</div>
+        </div>
+      </div>
+      ${nextKm?`
+      <div style="font-size:11px;color:var(--gray-400);margin-bottom:4px">ความคืบหน้าสู่ไมล์ซ่อมถัดไป ${fmtKm(nextKm)} — ${pct}%</div>
+      <div class="mlog-bar-wrap"><div class="mlog-bar ${barCls}" style="width:${pct}%"></div></div>
+      ${estDate?`<div style="font-size:11px;color:var(--gray-600)">คาดว่าจะถึงกำหนดซ่อมประมาณ: <b>${estDate.toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'})}</b></div>`:''}
+      `:''}
+      ${est?.estimated?`<div style="font-size:11px;color:var(--gray-400);margin-top:4px">* ไมล์ประมาณการ คำนวณจากอัตราเฉลี่ย ${avg?Math.round(avg).toLocaleString('th-TH'):'-'} กม./วัน — กรอกไมล์จริงเพื่อความแม่นยำ</div>`:''}
+      ${recentLogs.length?`<div class="mlog-history"><div style="font-size:11px;font-weight:600;color:var(--gray-400);margin-bottom:6px">บันทึกไมล์ล่าสุด</div>${logsHtml}</div>`:`<div style="font-size:12px;color:var(--gray-400);margin-top:8px">ยังไม่มีบันทึกไมล์ — กดปุ่ม "+ บันทึกไมล์" เพื่อเริ่ม</div>`}
+    `;
+    el.appendChild(div);
+  });
+}
+
+// ═══════════════════════════════════════════
+//  AUTH SYSTEM
+// ═══════════════════════════════════════════
+const AUTH_KEY = 'car_maint_auth_v1';
+let currentUser = null; // { username, name, role, hash }
+
+// ── hash อย่างง่าย (ไม่ใช้ crypto จริงเพราะ offline) ──
+function hashStr(s){
+  let h=0x811c9dc5;
+  for(let i=0;i<s.length;i++){ h^=s.charCodeAt(i); h=(h*0x01000193)>>>0; }
+  return h.toString(16).padStart(8,'0');
+}
+function hashPwd(username, password){
+  // salt ด้วย username เพื่อกัน rainbow table อย่างง่าย
+  return hashStr(username.toLowerCase()+'::'+password+'::car_maint_salt_2569');
+}
+function generateRecoveryCode(){
+  return Math.random().toString(36).slice(2,8).toUpperCase()+'-'+
+         Math.random().toString(36).slice(2,8).toUpperCase();
+}
+
+// ── โหลด/บันทึก users ──
+function loadUsers(){
+  try{
+    const raw=localStorage.getItem(AUTH_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return null;
+}
+function saveUsers(users){
+  try{ localStorage.setItem(AUTH_KEY, JSON.stringify(users)); }catch(e){}
+}
+function getUsers(){ return loadUsers() || getDefaultUsers(); }
+function getDefaultUsers(){
+  // สร้าง admin เริ่มต้น: username=admin, password=admin1234
+  const rc=generateRecoveryCode();
+  const users=[{
+    username:'admin',
+    name:'ผู้ดูแลระบบ',
+    role:'admin',
+    hash:hashPwd('admin','admin1234'),
+    recoveryCode:rc,
+    createdAt:new Date().toISOString(),
+    active:true
+  }];
+  saveUsers(users);
+  console.log('[Auth] สร้าง admin เริ่มต้น recovery code:',rc);
+  return users;
+}
+
+// ── Login ──
+function doLogin(){
+  const u=document.getElementById('lgUser').value.trim().toLowerCase();
+  const p=document.getElementById('lgPass').value;
+  const errEl=document.getElementById('loginErr');
+  errEl.className='login-err';
+
+  if(!u||!p){ showLoginErr('กรุณากรอก username และรหัสผ่าน'); return; }
+
+  const users=getUsers();
+  const found=users.find(x=>x.username===u&&x.active!==false);
+  if(!found){ showLoginErr('ไม่พบชื่อผู้ใช้นี้ในระบบ'); return; }
+
+  const h=hashPwd(u,p);
+  if(h!==found.hash){ showLoginErr('รหัสผ่านไม่ถูกต้อง'); return; }
+
+  // Login สำเร็จ
+  currentUser={...found};
+  sessionStorage.setItem('car_session', JSON.stringify({username:found.username, loginAt:Date.now()}));
+  hideLogin();
+  // แจ้งเตือน LINE เมื่อ Login
+  // แจ้งเตือน LINE เมื่อ Login — ส่งหลัง currentUser set แล้ว
+  if(currentUser && currentUser.username){
+    lineNotify('notifyLogin',{
+      username: (currentUser.name||'?')+' (@'+(currentUser.username||'?')+')',
+      userRole: currentUser.role==='admin'?'⭐ Admin'
+                :currentUser.role==='readonly'?'👁 ดูอย่างเดียว'
+                :'👤 ผู้ใช้ทั่วไป'
+    });
+  }
+}
+
+function showLoginErr(msg){
+  const el=document.getElementById('loginErr');
+  el.textContent='❌ '+msg; el.className='login-err show';
+}
+
+// ── Forgot Password ──
+function doForgot(){
+  const u=document.getElementById('fgUser').value.trim().toLowerCase();
+  const code=document.getElementById('fgCode').value.trim().toUpperCase();
+  const np=document.getElementById('fgNew').value;
+  const errEl=document.getElementById('forgotErr');
+  const okEl=document.getElementById('forgotOk');
+  errEl.className='login-err'; okEl.className='login-ok';
+
+  if(!u||!code||!np){ errEl.textContent='❌ กรุณากรอกข้อมูลให้ครบ'; errEl.className='login-err show'; return; }
+  if(np.length<6){ errEl.textContent='❌ รหัสผ่านต้องมีอย่างน้อย 6 ตัวอักษร'; errEl.className='login-err show'; return; }
+
+  const users=getUsers();
+  const idx=users.findIndex(x=>x.username===u);
+  if(idx<0){ errEl.textContent='❌ ไม่พบ username นี้'; errEl.className='login-err show'; return; }
+  if(users[idx].recoveryCode!==code){ errEl.textContent='❌ Recovery Code ไม่ถูกต้อง'; errEl.className='login-err show'; return; }
+
+  users[idx].hash=hashPwd(u,np);
+  users[idx].recoveryCode=generateRecoveryCode(); // สร้าง recovery code ใหม่ทุกครั้ง
+  saveUsers(users);
+
+  okEl.textContent='✅ เปลี่ยนรหัสผ่านเรียบร้อย! กรุณาบันทึก Recovery Code ใหม่: '+users[idx].recoveryCode;
+  okEl.className='login-ok show';
+  document.getElementById('fgNew').value='';
+  document.getElementById('fgCode').value='';
+}
+
+// ── Logout ──
+function doLogout(){
+  if(!confirm('ต้องการออกจากระบบหรือไม่?')) return;
+  currentUser=null;
+  sessionStorage.removeItem('car_session');
+  // ล้าง input
+  document.getElementById('lgUser').value='';
+  document.getElementById('lgPass').value='';
+  document.getElementById('loginErr').className='login-err';
+  showView('loginView');
+  document.getElementById('loginWrap').style.display='flex';
+}
+
+// ── Show/Hide Login ──
+function hideLogin(){
+  const w=document.getElementById('loginWrap');
+  w.style.opacity='0'; w.style.transition='opacity .3s';
+  setTimeout(()=>{ w.style.display='none'; }, 320);
+  // ตั้งค่า UI ตาม role
+  setupRoleUI();
+  updateCurUserBadge();
+}
+function showView(id){
+  ['loginView','forgotView'].forEach(v=>{
+    document.getElementById(v).classList.toggle('hidden', v!==id);
+  });
+  // ล้าง error
+  ['loginErr','forgotErr','forgotOk'].forEach(e=>{
+    const el=document.getElementById(e); if(el) el.className=el.className.replace(' show','');
+  });
+}
+function togglePwd(id, btn){
+  const el=document.getElementById(id);
+  if(!el) return;
+  if(el.type==='password'){ el.type='text'; btn.textContent='🙈'; }
+  else { el.type='password'; btn.textContent='👁'; }
+}
+
+// ── Setup UI ตาม Role ──
+function setupRoleUI(){
+  if(!currentUser) return;
+  const isAdmin=currentUser.role==='admin';
+  const isReadonly=currentUser.role==='readonly';
+
+  // แสดง tab ผู้ใช้งาน เฉพาะ admin
+  const tabU=document.getElementById('tabUsers');
+  if(tabU) tabU.style.display=isAdmin?'':'none';
+
+  // ซ่อนปุ่ม เพิ่ม/แก้ไข/ลบ ถ้า readonly
+  if(isReadonly){
+    document.querySelectorAll('.btn-success,.btn-danger,.btn-amber').forEach(b=>{
+      b.style.display='none';
+    });
+  }
+}
+function updateCurUserBadge(){
+  const el=document.getElementById('curUserBadge'); if(!el||!currentUser) return;
+  const roleLabel=currentUser.role==='admin'?'⭐ Admin':currentUser.role==='readonly'?'👁 ดูอย่างเดียว':'👤 ผู้ใช้';
+  el.textContent=currentUser.name+' ('+roleLabel+')';
+}
+
+// ═══════════════════════════════════════════
+//  USER MANAGEMENT
+// ═══════════════════════════════════════════
+function renderUsersPage(){
+  if(!currentUser) return;
+
+  // ข้อมูลผู้ใช้ปัจจุบัน
+  const infoEl=document.getElementById('curUserInfo');
+  if(infoEl){
+    const roleLabel=currentUser.role==='admin'?'⭐ ผู้ดูแลระบบ (Admin)':currentUser.role==='readonly'?'👁 ดูอย่างเดียว':'👤 ผู้ใช้ทั่วไป';
+    infoEl.innerHTML=`<b>เข้าสู่ระบบในชื่อ:</b> ${currentUser.name} (${currentUser.username}) &nbsp; <span class="role-badge role-${currentUser.role}">${roleLabel}</span>`;
+  }
+
+  // แสดง/ซ่อนส่วนเพิ่มผู้ใช้
+  const addSec=document.getElementById('addUserSection');
+  if(addSec) addSec.style.display=currentUser.role==='admin'?'':'none';
+
+  // แสดงรายชื่อผู้ใช้
+  renderUserList();
+}
+
+function renderUserList(){
+  const el=document.getElementById('userList'); if(!el) return;
+  const users=getUsers();
+  const isAdmin=currentUser&&currentUser.role==='admin';
+
+  if(!users.length){ el.innerHTML='<p style="color:var(--gray-400)">ยังไม่มีผู้ใช้</p>'; return; }
+
+  el.innerHTML=users.map((u,i)=>{
+    const roleLabel=u.role==='admin'?'⭐ Admin':u.role==='readonly'?'👁 ดูอย่างเดียว':'👤 ผู้ใช้ทั่วไป';
+    const roleCls=u.role==='admin'?'role-admin':u.role==='readonly'?'role-readonly':'role-user';
+    const isSelf=currentUser&&u.username===currentUser.username;
+    const actions=isAdmin&&!isSelf?`
+      <button class="btn btn-outline btn-sm" onclick="resetUserPassword(${i})">🔑 รีเซ็ต</button>
+      <button class="btn btn-danger" onclick="toggleUserActive(${i})">${u.active===false?'✅ เปิดใช้':'🚫 ระงับ'}</button>
+    `:(isSelf?'<span style="font-size:11px;color:var(--gray-400)">(คุณ)</span>':'');
+    return `<div class="user-row">
+      <div class="user-info">
+        <div class="user-name">${u.name} <span class="role-badge ${roleCls}">${roleLabel}</span> ${u.active===false?'<span class="badge badge-red">ระงับ</span>':''}</div>
+        <div class="user-meta">@${u.username} · สร้างเมื่อ ${u.createdAt?new Date(u.createdAt).toLocaleDateString('th-TH'):'-'}</div>
+        ${isAdmin?`<div class="user-meta" style="color:#d97706">Recovery Code: <b>${u.recoveryCode}</b> (เก็บไว้ใช้กู้คืนรหัสผ่าน)</div>`:''}
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;align-items:center">${actions}</div>
+    </div>`;
+  }).join('');
+}
+
+function addUser(){
+  const u=document.getElementById('nuUser').value.trim().toLowerCase();
+  const name=document.getElementById('nuName').value.trim();
+  const p=document.getElementById('nuPass').value;
+  const role=document.getElementById('nuRole').value;
+  const errEl=document.getElementById('nuErr');
+  const okEl=document.getElementById('nuOk');
+  errEl.className='login-err'; okEl.className='login-ok';
+
+  if(!u||!name||!p){ errEl.textContent='❌ กรุณากรอกข้อมูลให้ครบ'; errEl.className='login-err show'; return; }
+  if(!/^[a-z0-9_]{3,20}$/.test(u)){ errEl.textContent='❌ Username ต้องเป็นตัวอักษรภาษาอังกฤษ/ตัวเลข 3-20 ตัว'; errEl.className='login-err show'; return; }
+  if(p.length<6){ errEl.textContent='❌ รหัสผ่านต้องมีอย่างน้อย 6 ตัว'; errEl.className='login-err show'; return; }
+
+  const users=getUsers();
+  if(users.find(x=>x.username===u)){ errEl.textContent='❌ Username นี้มีอยู่แล้ว'; errEl.className='login-err show'; return; }
+
+  const rc=generateRecoveryCode();
+  users.push({ username:u, name, role, hash:hashPwd(u,p), recoveryCode:rc, createdAt:new Date().toISOString(), active:true });
+  saveUsers(users);
+
+  okEl.innerHTML=`✅ เพิ่มผู้ใช้ <b>${name}</b> (@${u}) เรียบร้อย<br>🔑 Recovery Code: <b style="font-size:14px;color:#dc2626">${rc}</b><br><span style="font-size:11px">⚠️ บันทึก Recovery Code นี้ไว้ในที่ปลอดภัย ใช้สำหรับกู้คืนรหัสผ่าน</span>`;
+  okEl.className='login-ok show';
+  document.getElementById('nuUser').value='';
+  document.getElementById('nuName').value='';
+  document.getElementById('nuPass').value='';
+  renderUserList();
+  pushUsers();
+  // แจ้งเตือน LINE เมื่อเพิ่มผู้ใช้ใหม่
+  lineNotify('notifyDataUpdate',{
+    actionType: '👥 เพิ่มผู้ใช้งานใหม่',
+    carLicense: 'ระบบผู้ใช้งาน',
+    detailText:  name+' (@'+u+') | สิทธิ์: '+role,
+    updatedBy:   getByStr()
+  });
+}
+
+function resetUserPassword(idx){
+  const users=getUsers();
+  const u=users[idx];
+  if(!u) return;
+  const np=prompt(`ตั้งรหัสผ่านใหม่ให้ ${u.name} (@${u.username}):\n(อย่างน้อย 6 ตัวอักษร)`);
+  if(!np) return;
+  if(np.length<6){ alert('รหัสผ่านต้องมีอย่างน้อย 6 ตัว'); return; }
+  users[idx].hash=hashPwd(u.username,np);
+  users[idx].recoveryCode=generateRecoveryCode();
+  saveUsers(users);
+  alert(`✅ เปลี่ยนรหัสผ่านให้ ${u.name} เรียบร้อย\nRecovery Code ใหม่: ${users[idx].recoveryCode}\n(บันทึกไว้ให้ผู้ใช้ด้วย)`);
+  renderUserList();
+  pushUsers();
+}
+
+function toggleUserActive(idx){
+  const users=getUsers();
+  if(!users[idx]) return;
+  const newState=users[idx].active===false?true:false;
+  if(!confirm(`${newState?'เปิดใช้งาน':'ระงับการใช้งาน'} @${users[idx].username} ใช่หรือไม่?`)) return;
+  users[idx].active=newState;
+  saveUsers(users);
+  renderUserList();
+  pushUsers();
+}
+
+function changeMyPassword(){
+  const old=document.getElementById('cpOld').value;
+  const np=document.getElementById('cpNew').value;
+  const errEl=document.getElementById('cpErr');
+  const okEl=document.getElementById('cpOk');
+  errEl.className='login-err'; okEl.className='login-ok';
+
+  if(!old||!np){ errEl.textContent='❌ กรุณากรอกข้อมูลให้ครบ'; errEl.className='login-err show'; return; }
+  if(np.length<6){ errEl.textContent='❌ รหัสผ่านใหม่ต้องมีอย่างน้อย 6 ตัว'; errEl.className='login-err show'; return; }
+  if(!currentUser){ errEl.textContent='❌ กรุณาเข้าสู่ระบบก่อน'; errEl.className='login-err show'; return; }
+
+  const h=hashPwd(currentUser.username, old);
+  const users=getUsers();
+  const idx=users.findIndex(x=>x.username===currentUser.username);
+  if(idx<0||users[idx].hash!==h){ errEl.textContent='❌ รหัสผ่านเดิมไม่ถูกต้อง'; errEl.className='login-err show'; return; }
+
+  users[idx].hash=hashPwd(currentUser.username, np);
+  users[idx].recoveryCode=generateRecoveryCode();
+  saveUsers(users);
+  currentUser.hash=users[idx].hash;
+
+  okEl.innerHTML=`✅ เปลี่ยนรหัสผ่านเรียบร้อย<br>🔑 Recovery Code ใหม่: <b>${users[idx].recoveryCode}</b> (บันทึกไว้ด้วยครับ)`;
+  okEl.className='login-ok show';
+  document.getElementById('cpOld').value='';
+  document.getElementById('cpNew').value='';
+  pushUsers();
+}
+
+// ═══════════════════════════════════════════
+//  CONFIG
+// ═══════════════════════════════════════════
+const LOGO   = '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';
+const API    = 'https://script.google.com/macros/s/AKfycbxlQKXJxzYgRoVYXsU66FAzP2RcmTFmHKRUd7eGB_veuSU7wswAVQCcL77rxPgVRFmvsA/exec';
+const SK     = 'car_maint_v3';
+const POLL   = 20000;
+const KM_INT = 10000;   // ระยะมาตรฐานเปลี่ยนถ่ายน้ำมัน
+const WARN   = 3000;    // เหลือกี่กิโลขึ้นเหลือง
+const CRIT   = 500;     // เหลือกี่กิโลขึ้นแดง / เลยกำหนด
+const PERIODIC = ['เช็คระยะตามรอบ','เช็คระยะทุก 6 เดือน'];
+
+const QUICK = [
+  'เปลี่ยนถ่ายน้ำมันเครื่อง','เช็คระยะตามรอบ','สลับยางถ่วงล้อ',
+  'เปลี่ยนไส้กรองอากาศ','เปลี่ยนกรองแอร์','เปลี่ยนกรองโซล่า',
+  'น้ำยาขจัดคราบเขม่า','น้ำยาปรับสภาพน้ำมันดีเซล',
+  'เปลี่ยนผ้าเบรคหน้า','เปลี่ยนผ้าเบรคหลัง','เจียจานเบรค',
+  'เปลี่ยนน้ำมันเบรก','เปลี่ยนน้ำมันเกียร์','เปลี่ยนน้ำมันเฟืองท้าย',
+  'เปลี่ยนยางปัดน้ำฝน','เปลี่ยนแบตเตอรี่','ตั้งศูนย์ล้อ',
+  'ล้างระบบหัวฉีด','เปลี่ยนน้ำยาหม้อน้ำ','เปลี่ยนสายพานหน้าเครื่อง',
+  'เปลี่ยนยาง 4 เส้น','ตรวจสอบระบบเบรก','ตรวจสอบระบบช่วงล่าง'
+];
+
+// ═══════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════
+let DB = { cars:[], records:[] };
+let curCar = null, curPage = 'records';
+let editId = null, detRows = [];
+let syncing = false, lastSync = null, failCnt = 0;
+let suppressPoll = 0;
+
+// ═══════════════════════════════════════════
+//  DEFAULT DATA (ข้อมูล 11 คันจาก Excel)
+// ═══════════════════════════════════════════
+function defaultData() {
+  return {
+    cars: [
+      {id:'กอ1035',plate:'กอ 1035 รย.',type:'รถราชการ',model:'',year:''},
+      {id:'กว2392',plate:'กว 2392 รย.',type:'รถราชการ',model:'',year:''},
+      {id:'ขค5753',plate:'ขค 5753 รย.',type:'รถราชการ',model:'',year:''},
+      {id:'ขข3118',plate:'ขข 3118 รย.',type:'รถราชการ',model:'',year:''},
+      {id:'ขษ7318',plate:'ขษ 7318 รย.',type:'รถราชการ',model:'',year:''},
+      {id:'ขข8975',plate:'ขข 8975 รย.',type:'รถราชการ',model:'',year:''},
+      {id:'ขข8976',plate:'ขข 8976 รย.',type:'รถราชการ',model:'',year:''},
+      {id:'นข7310',plate:'นข 7310 รย.',type:'รถราชการ',model:'',year:''},
+      {id:'ขต4744',plate:'ขต 4744 รย.',type:'รถราชการ',model:'',year:''},
+      {id:'กต4410',plate:'กต 4410 รย.',type:'รถราชการ',model:'',year:''},
+      {id:'ขน9930',plate:'ขน 9930 รย.',type:'รถ HEV',model:'',year:''}
+    ],
+    records: [
+      // กอ 1035
+      {id:'r001',carId:'กอ1035',date:'2567-10-11',mileage:338151,nextMileage:349218,type:'เช็คระยะตามรอบ',note:'-',details:['เปลี่ยนถ่ายน้ำมันเครื่อง','เช็คระยะตามรอบ']},
+      {id:'r002',carId:'กอ1035',date:'2568-01-20',mileage:null,nextMileage:null,type:'ซ่อมฉุกเฉิน',note:'',details:['เปลี่ยนลูกปืนล้อหน้า ซ้าย-ขวา','เปลี่ยนโช๊คค้ำฝาท้าย 2 ข้าง','เปลี่ยนกลอนล๊อกฝาท้าย','เปลี่ยนแตร 1 ชุด']},
+      {id:'r003',carId:'กอ1035',date:'2568-03-03',mileage:349218,nextMileage:361257,type:'เช็คระยะตามรอบ',note:'-',details:['เปลี่ยนถ่ายน้ำมันเครื่อง','เช็คระยะตามรอบ','สลับยางถ่วงล้อ','น้ำยาปรับสภาพน้ำมันดีเซล','น้ำยาขจัดคราบเขม่า']},
+      {id:'r004',carId:'กอ1035',date:'2568-04-11',mileage:null,nextMileage:null,type:'ซ่อมฉุกเฉิน',note:'*ดำเนินการให้ร้านเหรียญเจริญ',details:['ตรวจเช็คห้องโดยสารไม่มีความเย็น']},
+      {id:'r005',carId:'กอ1035',date:'2568-08-22',mileage:361257,nextMileage:373811,type:'เช็คระยะตามรอบ',note:'',details:['เปลี่ยนถ่ายน้ำมันเครื่อง','เช็คระยะตามรอบ','เปลี่ยนผ้าเบรคหน้า ซ้าย-ขวา','เจียจานเบรค ซ้าย-ขวา','เปลี่ยนไส้กรองอากาศ','เปลี่ยนกรองแอร์','วัดค่าแบตเตอรี่ Measured:643CCA Rating:655 CCA']},
+      {id:'r006',carId:'กอ1035',date:'2568-10-02',mileage:null,nextMileage:null,type:'ซ่อมฉุกเฉิน',note:'-',details:['ส่งซ่อม เบรกมีเสียงดัง','เปลี่ยนจานเบรก 2 ล้อหน้า','วัดค่าแบตเตอรี่ Measured 587CCA Rating 490 CCA','เปลี่ยนแม่ปั๊มคลัตซ์ตัวล่าง','น้ำมันเบรก/คลัตซ์']},
+      {id:'r007',carId:'กอ1035',date:'2569-01-05',mileage:375635,nextMileage:385635,type:'เช็คระยะตามรอบ',note:'-',details:['เปลี่ยนน้ำมันเครื่อง','ตรวจสอบระบบเบรก','ตรวจสอบระบบส่งกำลัง','ตรวจสอบช่วงล่าง','ความหนาผ้าเบรกหน้า 8 มม. หลัง 3.5 มม.','ความลึกดอกยาง 4.5 มม.','แบตเตอรี่ MEASURED 574 CCA RATING 630 CCA']},
+      {id:'r008',carId:'กอ1035',date:'2569-06-15',mileage:385635,nextMileage:null,type:'เช็คระยะตามรอบ',note:'',details:['เปลี่ยนถ่ายน้ำมันเครื่อง']},
+      // กว 2392
+      {id:'r101',carId:'กว2392',date:'2567-06-04',mileage:177584,nextMileage:188165,type:'เช็คระยะตามรอบ',note:'-',details:['เปลี่ยนถ่ายน้ำมันเครื่อง','เช็คระยะตามรอบ']},
+      {id:'r102',carId:'กว2392',date:'2567-11-14',mileage:187609,nextMileage:198818,type:'เช็คระยะตามรอบ',note:'-',details:['เปลี่ยนน้ำมันเครื่อง','สลับยางถ่วงล้อ','ทำความสะอาดระบบปรับอากาศ','เปลี่ยนจานดรัมเบรกหลัง 2 ล้อ','เปลี่ยนไส้กรองอากาศ','เปลี่ยนกรองแอร์']},
+      {id:'r103',carId:'กว2392',date:'2568-04-18',mileage:null,nextMileage:null,type:'ซ่อมฉุกเฉิน',note:'-',details:['เปลี่ยนหน้าครัตซ์คอมแอร์','เปลี่ยนสายพานหน้าเครื่อง','เปลี่ยนลูกรอกสายพาน 2 ตัว']},
+      {id:'r104',carId:'กว2392',date:'2568-06-09',mileage:198818,nextMileage:210024,type:'เช็คระยะตามรอบ',note:'',details:['เปลี่ยนถ่ายน้ำมันเครื่อง','เปลี่ยนน้ำมันเฟืองท้าย','เปลี่ยนน้ำมันเบรก','สลับยางถ่วงล้อ','เปลี่ยนแบตเตอรี่','เปลี่ยนกรองโซล่า']},
+      {id:'r105',carId:'กว2392',date:'2568-10-20',mileage:null,nextMileage:null,type:'ซ่อมฉุกเฉิน',note:'-',details:['ส่งซ่อมปรับปรุงห้องปฎิบัติการฉุกเฉิน ช่างมารับรถวันที่ 22/10/2568 เสร็จสิ้น 10/11/2568']},
+      {id:'r106',carId:'กว2392',date:'2568-12-17',mileage:210024,nextMileage:220883,type:'เช็คระยะตามรอบ',note:'',details:['เปลี่ยนถ่ายน้ำมันเครื่อง','เปลี่ยนแผงหน้าปัดวิทยุ','เปลี่ยนยางปัดน้ำฝน','ผ้าเบรก หน้า 5.5mm หลัง 6mm','ดอกยาง 6mm','แบตเตอรี่ 13.04v 679cca']},
+      {id:'r107',carId:'กว2392',date:'2569-01-28',mileage:null,nextMileage:null,type:'ซ่อมฉุกเฉิน',note:'',details:['เปลี่ยนปีกนกบน ซ้าย,ขวา','เปลี่ยนโช็คหน้า 2 ตัว','เปลี่ยนยาง 4 เส้น B.205/70R15c','แบตเตอรี่ 12.80v 681cca']},
+      // ขค 5753
+      {id:'r201',carId:'ขค5753',date:'2567-07-23',mileage:87083,nextMileage:98276,type:'เช็คระยะตามรอบ',note:'-',details:['เปลี่ยนถ่ายน้ำมันเครื่อง','เช็คระยะตามรอบ']},
+      {id:'r202',carId:'ขค5753',date:'2567-11-15',mileage:98276,nextMileage:109160,type:'เช็คระยะตามรอบ',note:'-',details:['เปลี่ยนถ่ายน้ำมันเครื่อง','เจียร์จานเบรกข้างซ้าย','เปลี่ยนผ้าเบรกหน้า 2 ข้าง','น้ำยาปรับสภาพน้ำมันดีเซล','สลับยางถ่วงล้อ']},
+      {id:'r203',carId:'ขค5753',date:'2567-12-24',mileage:null,nextMileage:null,type:'ซ่อมฉุกเฉิน',note:'-',details:['วิ่งด้วยความเร็ว 100 km/h พวงมาลัยสั่น','ปรับถ่วงล้อ 2 ล้อหน้า']},
+      {id:'r204',carId:'ขค5753',date:'2568-03-27',mileage:null,nextMileage:null,type:'ซ่อมฉุกเฉิน',note:'',details:['ยกเกียร์เปลี่ยนแผ่นคลัตซ์','เปลี่ยนสายพานหน้าเครื่อง','เปลี่ยนสวิตซ์ควบคุมกระจก(ฝั่งซ้าย)']},
+      {id:'r205',carId:'ขค5753',date:'2568-04-09',mileage:110092,nextMileage:120092,type:'เช็คระยะตามรอบ',note:'นัดหมาย 25/04/2568',details:['เปลี่ยนถ่ายน้ำมันเครื่อง','เปลี่ยนกรองแอร์','กรองน้ำมันเครื่อง']},
+      {id:'r206',carId:'ขค5753',date:'2568-04-25',mileage:null,nextMileage:null,type:'ซ่อมฉุกเฉิน',note:'',details:['เปลี่ยนยาง 4 เส้น','เปลี่ยนลูกยางกันกระแทกปีกนกล่างขวา','เจียจานเบรก']},
+      {id:'r207',carId:'ขค5753',date:'2568-06-05',mileage:null,nextMileage:null,type:'ซ่อมฉุกเฉิน',note:'-',details:['เปลี่ยนเครื่องแปลงไฟ DC/AC']},
+      {id:'r208',carId:'ขค5753',date:'2568-09-22',mileage:121092,nextMileage:132000,type:'เช็คระยะตามรอบ',note:'ปั๊มน้ำรั่ว นัดเปลี่ยน',details:['เปลี่ยนน้ำมันเครื่อง','ผ้าเบรก หน้า 8.5mm หลัง 4mm','ดอกยาง 7mm','แบตเตอรี่ 12.50v 449cca']},
+      {id:'r209',carId:'ขค5753',date:'2568-09-29',mileage:null,nextMileage:null,type:'ซ่อมฉุกเฉิน',note:'ดำเนินการเสร็จสิ้น',details:['เปลี่ยนปั๊มน้ำและประเก็น','น้ำยาหล่อเย็นเครื่องยนต์ 2 แกลอน','แบตเตอรี่ 12.68v 462cca']},
+      {id:'r210',carId:'ขค5753',date:'2569-01-24',mileage:134273,nextMileage:144000,type:'เช็คระยะตามรอบ',note:'',details:['เปลี่ยนถ่ายน้ำมันเครื่อง','เปลี่ยนน้ำมันเกียร์','สลับยางถ่วงล้อ','เปลี่ยนยางปัดน้ำฝน','ล้างระบบหัวฉีด','กรองโซล่า']},
+      // ขข 3118
+      {id:'r301',carId:'ขข3118',date:'2567-06-05',mileage:41979,nextMileage:43898,type:'เช็คระยะตามรอบ',note:'-',details:['เปลี่ยนถ่ายน้ำมันเครื่อง','เช็คระยะตามรอบ']},
+      {id:'r302',carId:'ขข3118',date:'2567-12-13',mileage:null,nextMileage:47177,type:'เช็คระยะทุก 6 เดือน',note:'ครบรอบ มิ.ย.68',details:['เปลี่ยนถ่ายน้ำมันเครื่อง','เช็คระยะตามรอบ']},
+      {id:'r303',carId:'ขข3118',date:'2568-07-09',mileage:null,nextMileage:null,type:'เช็คระยะทุก 6 เดือน',note:'',details:['เปลี่ยนถ่ายน้ำมันเครื่อง','เปลี่ยนผ้าเบรคหลัง','เปลี่ยนไส้กรองอากาศ','เปลี่ยนลูกยางกันโคลงหน้า','เปลี่ยนใบปัดน้ำฝน','กรองแอร์']},
+      {id:'r304',carId:'ขข3118',date:'2568-10-04',mileage:null,nextMileage:null,type:'ซ่อมฉุกเฉิน',note:'-',details:['จานเบรกหลังมีเสียงดัง','ปรับปรุงซ่อมแก้ไขประตูด้านข้าง','ชุดกระโหลกหน้าซ้าย เคาะพ่นสี']},
+      {id:'r305',carId:'ขข3118',date:'2569-03-06',mileage:45131,nextMileage:55131,type:'เช็คระยะตามรอบ',note:'',details:['จานเบรกสั่น เช็คระยะ แบตเตอรี่เสื่อม','เปลี่ยนถ่ายน้ำมันเครื่อง','เปลี่ยนยาง B215/70R15C']},
+      // ขษ 7318
+      {id:'r401',carId:'ขษ7318',date:'2568-11-04',mileage:1000,nextMileage:10000,type:'เช็คระยะตามรอบ',note:'-',details:['เช็คระยะ 1,000 กม.','ตรวจระดับน้ำมัน น้ำหล่อเย็น น้ำกลั่น','ตรวจแรงดันลมยาง','แบตเตอรี่ 12.73v 927cca','ดอกยาง 6mm']},
+      {id:'r402',carId:'ขษ7318',date:'2568-12-11',mileage:null,nextMileage:12000,type:'เช็คระยะทุก 6 เดือน',note:'*ครบ 6 เดือน มิ.ย.69*',details:['เปลี่ยนถ่ายน้ำมันเครื่อง','เช็คระยะ 6 เดือน']},
+      {id:'r403',carId:'ขษ7318',date:'2569-04-22',mileage:12000,nextMileage:22000,type:'เช็คระยะตามรอบ',note:'',details:['เปลี่ยนถ่ายน้ำมันเครื่อง']},
+      {id:'r404',carId:'ขษ7318',date:'2569-04-22',mileage:null,nextMileage:null,type:'ซ่อมทั่วไป',note:'ร้านเหรียญเจริญ',details:['เปลี่ยนฟิลม์กรองแสง 40% บานหน้า ซ้าย ขวา']},
+      // ขข 8975
+      {id:'r501',carId:'ขข8975',date:'2568-01-30',mileage:157179,nextMileage:168181,type:'เช็คระยะตามรอบ',note:'',details:['เปลี่ยนถ่ายน้ำมันเครื่อง','ตั้งศูนย์ล้อ','เปลี่ยนชุดแร๊คพวงมาลัย','เจียร์จานเบรคหน้า','เปลี่ยนยางปัดน้ำฝน','ถ่ายน้ำมันเฟืองท้าย','กรองโซล่า','เปลี่ยนเบรกหน้า','เปลี่ยนแบตเตอรี่(LN-3)']},
+      {id:'r502',carId:'ขข8975',date:'2568-06-01',mileage:168181,nextMileage:178400,type:'เช็คระยะตามรอบ',note:'',details:['ล้างระบบหัวฉีดดีเซล','เปลี่ยนน้ำมันเครื่อง','ตรวจระบบเบรก','สลับยางถ่วงล้อ','ผ้าเบรกหน้า 5mm หลัง 3.5mm','ดอกยางหน้า 5mm หลัง 6mm','แบตเตอรี่ 13.13v 701cca']},
+      // ขข 8976
+      {id:'r601',carId:'ขข8976',date:'2567-10-15',mileage:132392,nextMileage:144151,type:'เช็คระยะตามรอบ',note:'-',details:['เปลี่ยนถ่ายน้ำมันเครื่อง','เช็คระยะตามรอบ']},
+      {id:'r602',carId:'ขข8976',date:'2568-03-05',mileage:144151,nextMileage:155696,type:'เช็คระยะตามรอบ',note:'-',details:['เปลี่ยนถ่ายน้ำมันเครื่อง','น้ำมันเบรก','กรองโซล่า','น้ำมันเฟืองท้าย','น้ำมันเกียร์','น้ำยาหม้อน้ำ']},
+      {id:'r603',carId:'ขข8976',date:'2568-07-18',mileage:155969,nextMileage:165947,type:'เช็คระยะตามรอบ',note:'',details:['เปลี่ยนน้ำมันเครื่อง','สลับยางถ่วงล้อ','น้ำยาปรับสภาพน้ำมันดีเซล']},
+      {id:'r604',carId:'ขข8976',date:'2568-12-23',mileage:165947,nextMileage:177827,type:'เช็คระยะตามรอบ',note:'',details:['เปลี่ยนถ่ายน้ำมันเครื่อง','ดอกยาง หน้า 5mm หลัง 5mm','ผ้าเบรก หน้า 4mm หลัง 3.5mm','แบตเตอรี่ 12.81v 446cca']},
+      // นข 7310
+      {id:'r701',carId:'นข7310',date:'2568-07-07',mileage:null,nextMileage:189410,type:'เช็คระยะทุก 6 เดือน',note:'',details:['เปลี่ยนถ่ายน้ำมันเครื่อง','เปลี่ยนยางปัดน้ำฝน R.L','สลับยางถ่วงล้อ']},
+      {id:'r702',carId:'นข7310',date:'2569-02-19',mileage:null,nextMileage:192489,type:'เช็คระยะทุก 6 เดือน',note:'ครบ 6 เดือน สิงหาคม 69',details:['เช็คระยะ 190,000กม/6เดือน','เปลี่ยนถ่ายน้ำมันเครื่อง','ผ้าเบรก F=4mm R=4mm','ดอกยาง 5mm','แบตเตอรี่ 12.80v 601cca']},
+      // ขต 4744
+      {id:'r801',carId:'ขต4744',date:'2567-12-11',mileage:null,nextMileage:10000,type:'เช็คระยะทุก 6 เดือน',note:'',details:['เปลี่ยนถ่ายน้ำมันเครื่อง','เปลี่ยนเรือนไมล์ใหม่ รีเซ็ต 0']},
+      {id:'r802',carId:'ขต4744',date:'2567-12-26',mileage:null,nextMileage:null,type:'ซ่อมฉุกเฉิน',note:'',details:['เปลี่ยนพลาสติกยึดเหล็กค้ำฝากระโปรง','เปลี่ยนยางปัดน้ำฝน','เปลี่ยนแบตเตอรี่','ฝาครอบซุ้มล้อ']},
+      {id:'r803',carId:'ขต4744',date:'2568-02-28',mileage:null,nextMileage:null,type:'ซ่อมฉุกเฉิน',note:'-',details:['ซ่อมฝาประตูท้าย']},
+      {id:'r804',carId:'ขต4744',date:'2568-07-08',mileage:null,nextMileage:null,type:'เช็คระยะทุก 6 เดือน',note:'',details:['เปลี่ยนถ่ายน้ำมันเครื่อง','เปลี่ยนน้ำมันเฟืองท้าย','เปลี่ยนน้ำมันเบรค']},
+      {id:'r805',carId:'ขต4744',date:'2569-05-04',mileage:null,nextMileage:24200,type:'เช็คระยะทุก 6 เดือน',note:'',details:['เช็คระยะ 130,000/6เดือน','เปลี่ยนน้ำมันเครื่อง','ผ้าเบรก F=2.5mm R=3.5mm','ดอกยาง F=5mm R=5mm','แบตเตอรี่ 12.52v 239cca']},
+      // กต 4410
+      {id:'r901',carId:'กต4410',date:'2567-11-12',mileage:430733,nextMileage:431813,type:'เช็คระยะตามรอบ',note:'นัดถ่ายน้ำมันเกียร์ 507813',details:['เปลี่ยนระบบปรับอากาศ(ยกชุด)','เปลี่ยนน้ำมันเครื่อง,เกียร์,เฟืองท้าย','เปลี่ยนยาง 4 เส้น','ติดฟิมล์กรองแสง 5 ด้าน']},
+      {id:'r902',carId:'กต4410',date:'2568-12-23',mileage:null,nextMileage:null,type:'ซ่อมฉุกเฉิน',note:'ร้านเหรียญเจริญ',details:['เปลี่ยนแบตเตอรี่']},
+      {id:'r903',carId:'กต4410',date:'2569-06-11',mileage:null,nextMileage:null,type:'ซ่อมฉุกเฉิน',note:'-',details:['ซ่อมบำรุงหม้อน้ำ(ในชุด)']},
+      // ขน 9930
+      {id:'r1001',carId:'ขน9930',date:'2567-11-10',mileage:null,nextMileage:27350,type:'เช็คระยะทุก 6 เดือน',note:'เสนอเปลี่ยนแบตเตอรี่ 12V',details:['เปลี่ยนถ่ายน้ำมันเครื่อง','เช็คระยะตามรอบ 6 เดือน']},
+      {id:'r1002',carId:'ขน9930',date:'2569-02-28',mileage:null,nextMileage:38000,type:'เช็คระยะทุก 6 เดือน',note:'ครบ 6 เดือน ส.ค.69',details:['เช็คระยะทั้งหมด','แบตเตอรี่ HEV มีปัญหา WARRANTY เคลมใหม่','ENGINE OIL 0W-20 4L','OIL FILTER']}
+    ]
+  };
+}
+
+// ═══════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════
+const genId = () => 'r'+Date.now()+Math.random().toString(36).slice(2,6);
+// วันที่ปัจจุบันในรูปแบบ ค.ศ. YYYY-MM-DD (สำหรับ <input type="date">)
+function todayCE(){ const t=new Date(); return `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`; }
+// วันที่ปัจจุบันในรูปแบบ พ.ศ. YYYY-MM-DD (สำหรับเก็บใน DB)
+function todayBE(){ const t=new Date(); return `${t.getFullYear()+543}-${String(t.getMonth()+1).padStart(2,'0')}-${String(t.getDate()).padStart(2,'0')}`; }
+// แสดงวันที่ พ.ศ. แบบสั้น เช่น "12 ก.ค. 2569"
+function todayBEDisplay(){ return thaiDate(todayBE()); }
+const isPeriodic = t => PERIODIC.includes(t);
+const fmtKm = v => v!=null&&v!=='' ? Number(v).toLocaleString('th-TH')+' กม.' : '-';
+
+function toBE(y){ return y>=2500?y:y+543; }
+function toCE(y){ return y>=2500?y-543:y; }
+function beToInput(s){
+  // แปลง พ.ศ. YYYY-MM-DD เป็น ค.ศ. YYYY-MM-DD สำหรับใส่ใน <input type="date">
+  if(!s||typeof s!=='string') return '';
+  const m=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(!m) return '';
+  const beYear=parseInt(m[1],10);
+  if(isNaN(beYear)) return '';
+  const ceYear=beYear>=2500?beYear-543:beYear;
+  if(ceYear<1900||ceYear>2100) return '';
+  return `${ceYear}-${m[2]}-${m[3]}`;
+}
+function inputToBE(s){
+  // แปลง input date (ค.ศ. YYYY-MM-DD) เป็น พ.ศ. YYYY-MM-DD
+  if(!s||typeof s!=='string') return '';
+  const parts=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(!parts) return '';
+  const ceYear=parseInt(parts[1],10);
+  if(isNaN(ceYear)||ceYear<1900||ceYear>2100) return '';
+  return `${ceYear+543}-${parts[2]}-${parts[3]}`;
+}
+function thaiDate(s){
+  // แปลง พ.ศ. YYYY-MM-DD เป็น "D MMM YYYY (พ.ศ.)"
+  if(!s||s==='-'||s==='') return '-';
+  const m=s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if(!m) return s;
+  const yr=parseInt(m[1],10), mo=parseInt(m[2],10), dy=parseInt(m[3],10);
+  if(isNaN(yr)||isNaN(mo)||isNaN(dy)) return s;
+  const beYear=yr>=2500?yr:yr+543;
+  const MO=['','ม.ค.','ก.พ.','มี.ค.','เม.ย.','พ.ค.','มิ.ย.','ก.ค.','ส.ค.','ก.ย.','ต.ค.','พ.ย.','ธ.ค.'];
+  if(mo<1||mo>12) return s;
+  return `${dy} ${MO[mo]} ${beYear}`;
+}
+function toast(msg, dur=3000){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.classList.add('show');
+  clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),dur);
+}
+function carRecs(id){ return DB.records.filter(r=>r.carId===id).sort((a,b)=>a.date>b.date?1:-1); }
+function lastKm(id){
+  const r=[...DB.records.filter(r=>r.carId===id&&r.mileage)].sort((a,b)=>a.date>b.date?1:-1);
+  return r.length ? r[r.length-1].mileage : null;
+}
+function typeBadge(t){
+  if(t==='เช็คระยะตามรอบ') return `<span class="badge badge-blue">${t}</span>`;
+  if(t==='เช็คระยะทุก 6 เดือน') return `<span class="badge badge-green">${t}</span>`;
+  if(t==='ซ่อมฉุกเฉิน') return `<span class="badge badge-red">${t}</span>`;
+  if(t==='ซ่อมทั่วไป') return `<span class="badge badge-grey">${t}</span>`;
+  return `<span class="badge badge-amber">${t}</span>`;
+}
+
+// ═══════════════════════════════════════════
+//  FORECAST ENGINE
+// ═══════════════════════════════════════════
+function forecast(carId){
+  const all=carRecs(carId);
+  const periodic=all.filter(r=>isPeriodic(r.type));
+  const withKm=periodic.filter(r=>r.mileage);
+  const lastP=periodic.length?periodic[periodic.length-1]:null;
+  const res={status:'unknown',statusText:'ยังไม่มีข้อมูล',lastDate:null,lastMile:null,nextMile:null,estimated:false,avgPerDay:null,estDate:null,remKm:null};
+  res.lastDate=lastP?lastP.date:null;
+  res.lastMile=withKm.length?withKm[withKm.length-1].mileage:null;
+  // ยึด nextMileage จาก record ตามรอบล่าสุดที่ระบุไว้จริง
+  // ค้นหาย้อนหลังจาก record ล่าสุด ถ้าไม่มี nextMileage ให้ไปหา record ก่อนหน้า
+  const recWithNext=[...periodic].reverse().find(r=>r.nextMileage);
+  res.nextMile=recWithNext?recWithNext.nextMileage:null;
+  if(withKm.length>=2){
+    const f=withKm[0],l=withKm[withKm.length-1];
+    const days=(new Date(beToInput(l.date))-new Date(beToInput(f.date)))/(864e5);
+    const km=l.mileage-f.mileage;
+    if(days>0&&km>0) res.avgPerDay=km/days;
+  }
+  // ถ้าไม่มี nextMileage บันทึกไว้ — ประมาณจาก lastMile + interval
+  if(!res.nextMile&&res.lastMile){
+    res.nextMile=res.lastMile+KM_INT;
+    res.estimated=true; // flag บอกว่าเป็นค่าประมาณ ไม่ใช่ค่าจริง
+  }
+  if(res.nextMile&&res.lastMile){
+    res.remKm=res.nextMile-res.lastMile;
+    if(res.avgPerDay){
+      const d=Math.round(res.remKm/res.avgPerDay);
+      const dt=new Date(); dt.setDate(dt.getDate()+d); res.estDate=dt;
+    }
+    if(res.remKm<=0){ res.status='danger'; res.statusText='เลยกำหนดระยะแล้ว — นำเข้าตรวจเช็คโดยด่วน'; }
+    else if(res.remKm<=CRIT){ res.status='danger'; res.statusText=`ใกล้ถึงกำหนดมาก (เหลืออีก ${fmtKm(res.remKm)})`; }
+    else if(res.remKm<=WARN){ res.status='warn'; res.statusText=`ใกล้ถึงกำหนด (เหลืออีก ${fmtKm(res.remKm)})`; }
+    else{ res.status='ok'; res.statusText=`ปกติ (เหลืออีก ${fmtKm(res.remKm)})`; }
+  } else if(lastP){ res.status='info'; res.statusText='ไม่มีข้อมูลไมล์ — ติดตามจากหมายเหตุ'; }
+  // 6 เดือน
+  const sixRecs=periodic.filter(r=>r.type==='เช็คระยะทุก 6 เดือน');
+  const last6=sixRecs.length?sixRecs[sixRecs.length-1]:null;
+  if(last6?.date){
+    const ceParts=beToInput(last6.date).split('-').map(Number); // [YYYY_CE, MM, DD]
+    if(ceParts.length===3&&!ceParts.some(isNaN)){
+      const nxt=new Date(ceParts[0],ceParts[1]-1+6,ceParts[2]); // local date + 6 months
+      const today=new Date(); today.setHours(0,0,0,0);
+      const dys=Math.round((nxt-today)/864e5);
+      res.six={nextDate:nxt,days:dys,status:dys<0?'danger':dys<=30?'warn':'ok',lastDate:last6.date,note:last6.note||''};
+    }
+  }
+  return res;
+}
+
+// ═══════════════════════════════════════════
+//  STORAGE (Local cache — fallback ออฟไลน์)
+// ═══════════════════════════════════════════
+function saveLocal(){
+  try{ localStorage.setItem(SK,JSON.stringify({ts:new Date().toISOString(),data:DB})); }catch(e){}
+}
+function loadLocal(){
+  try{
+    const raw=localStorage.getItem(SK); if(!raw) return false;
+    const p=JSON.parse(raw); const d=p.data||p;
+    if(!d.cars||!d.records) return false;
+    if(!d.cars.length&&!d.records.length) return false;
+    DB=d; return true;
+  }catch(e){ return false; }
+}
+
+// ═══════════════════════════════════════════
+//  GOOGLE SHEETS SYNC
+// ═══════════════════════════════════════════
+function setSyncUI(st,msg){
+  const el=document.getElementById('syncTxt'); if(!el) return;
+  el.className='synctxt'+(st==='ok'?' ok':st==='err'?' err':st==='busy'?' busy':'');
+  const icon=st==='ok'?'🟢':st==='err'?'🔴':st==='busy'?'🔄':'⚪';
+  el.textContent=icon+' '+msg;
+}
+async function sheetsFetch(method,bodyObj){
+  let json;
+  if(method==='GET'){
+    const url=API+'?action=getAll&key='+encodeURIComponent(SK);
+    const res=await fetch(url,{method:'GET',headers:{'Content-Type':'text/plain;charset=utf-8'}});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    try{ json=await res.json(); }catch(e){ return {success:true}; }
+  } else {
+    const payload=Object.assign({},bodyObj,{key:SK});
+    const res=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    try{ json=await res.json(); }catch(e){ return {success:true}; }
+  }
+  if(json&&json.error) throw new Error(json.error);
+  return json||{success:true};
+}
+function cleanFromSheets(data){
+  // sync users จาก Sheets (ถ้ามี) มาอัปเดต localStorage
+  if(data.users&&data.users.length){
+    const existingUsers=loadUsers();
+    // merge: ถ้า Sheets มี users ที่ไม่อยู่ใน localStorage ให้เพิ่ม
+    // ถ้า Sheets มีเวอร์ชันใหม่กว่า (updatedAt) ให้ใช้ Sheets
+    const merged=[...existingUsers];
+    data.users.forEach(su=>{
+      const idx=merged.findIndex(u=>u.username===su.username);
+      if(idx<0) merged.push(su);
+      else if(su.updatedAt&&(!merged[idx].updatedAt||su.updatedAt>merged[idx].updatedAt)) merged[idx]=su;
+    });
+    saveUsers(merged);
+  }
+  // sync mileageLogs จาก Sheets
+  if(data.mileageLogs&&data.mileageLogs.length){
+    const existingLogs=loadMileageLogs();
+    const existingIds=new Set(existingLogs.map(l=>l.id));
+    const newLogs=data.mileageLogs.filter(l=>!existingIds.has(l.id));
+    if(newLogs.length) saveMileageLogs([...existingLogs,...newLogs]);
+  }
+  const cars=(data.cars||[]).map(c=>({...c,id:String(c.id||'').trim()}));
+  const records=(data.records||[]).map(r=>{
+    let dateStr=String(r.date||'').trim().replace(/[\r\n\t]/g,'');
+    // ISO format (Sheets Date object serialized)
+    if(dateStr.includes('T')){
+      const dt=new Date(dateStr);
+      if(!isNaN(dt)){
+        const y=dt.getUTCFullYear(),mo=String(dt.getUTCMonth()+1).padStart(2,'0'),d=String(dt.getUTCDate()).padStart(2,'0');
+        dateStr=y>=2500?`${y}-${mo}-${d}`:`${y+543}-${mo}-${d}`;
+      }
+    } else if(dateStr.match(/^\d{4}-\d{2}-\d{2}$/)){
+      // plain date string — ถ้า year < 2500 = CE → แปลงเป็น BE
+      const yr=parseInt(dateStr.slice(0,4),10);
+      if(yr<2500) dateStr=`${yr+543}${dateStr.slice(4)}`;
+      // ถ้า >= 2500 คือ BE แล้ว ปล่อยไว้
+    }
+    return {
+      ...r,
+      id:String(r.id||'').trim(),
+      carId:String(r.carId||'').trim(),
+      date:dateStr,
+      mileage:r.mileage===''||r.mileage==null?null:Number(r.mileage),
+      nextMileage:r.nextMileage===''||r.nextMileage==null?null:Number(r.nextMileage),
+      details:Array.isArray(r.details)?r.details.filter(Boolean):(r.details?String(r.details).split('|').filter(Boolean):[])
+    };
+  });
+  return {cars,records};
+}
+async function pullFromSheets(silent){
+  if(!API) return false;
+  if(silent&&Date.now()<suppressPoll) return false;
+  syncing=true; if(!silent) setSyncUI('busy','กำลังดึงข้อมูล...');
+  try{
+    const data=await sheetsFetch('GET',null);
+    const cleaned=cleanFromSheets(data);
+    // ป้องกัน Sheets ส่งข้อมูลว่างมาทับ DB (กรณี Sheets error หรือ race condition)
+    if(cleaned.cars.length===0 && DB.cars.length>0){
+      console.warn('[Pull] Sheets ส่ง cars=0 ขณะที่ DB มี',DB.cars.length,'คัน — ข้ามการ overwrite');
+      lastSync=new Date(); failCnt=0;
+      setSyncUI('ok','ซิงค์ล่าสุด '+lastSync.toLocaleTimeString('th-TH')+' ('+todayBEDisplay()+')');
+      return true;
+    }
+    if(cleaned.records.length===0 && DB.records.length>0){
+      console.warn('[Pull] Sheets ส่ง records=0 — ข้ามการ overwrite');
+      lastSync=new Date(); failCnt=0;
+      setSyncUI('ok','ซิงค์ล่าสุด '+lastSync.toLocaleTimeString('th-TH')+' ('+todayBEDisplay()+')');
+      return true;
+    }
+    DB=cleaned;
+    saveLocal(); lastSync=new Date(); failCnt=0;
+    setSyncUI('ok','ซิงค์ล่าสุด '+lastSync.toLocaleTimeString('th-TH')+' ('+todayBEDisplay()+')');
+    refreshUI(); return true;
+  }catch(e){
+    failCnt++; setSyncUI('err','ซิงค์ไม่สำเร็จ — ใช้ข้อมูลในเครื่อง');
+    return false;
+  }finally{ syncing=false; }
+}
+async function pushAction(action,payload){
+  if(!API) return false;
+  setSyncUI('busy','กำลังบันทึก...');
+  // Validate ก่อนส่ง — ป้องกันข้อมูลผิดพลาดขึ้น Sheets
+  if(payload.record){
+    const r=payload.record;
+    if(!r.id||!r.carId){ console.error('[pushAction] record ขาด id หรือ carId'); return false; }
+    if(r.date&&!r.date.match(/^\d{4}-\d{2}-\d{2}$/)){ console.error('[pushAction] date ผิดรูปแบบ:',r.date); return false; }
+  }
+  let retries=2;
+  while(retries>=0){
+    try{
+      const result=await sheetsFetch('POST',{action,...payload});
+      lastSync=new Date(); failCnt=0;
+      console.log('[Push]',action,'สำเร็จ เวลา',lastSync.toLocaleTimeString('th-TH'));
+      setSyncUI('ok','บันทึกเมื่อ '+lastSync.toLocaleTimeString('th-TH'));
+      return true;
+    }catch(e){
+      retries--;
+      if(retries>=0){ await new Promise(r=>setTimeout(r,1500)); continue; }
+      failCnt++;
+      setSyncUI('err','บันทึกไม่สำเร็จ — ข้อมูลในเครื่องยังคงอยู่');
+      toast('⚠️ ส่งขึ้น Google Sheets ไม่สำเร็จ ข้อมูลเก็บในเครื่องไว้ก่อน ลองกด "ซิงค์ตอนนี้" เพื่อส่งใหม่');
+      return false;
+    }
+  }
+  return false;
+}
+async function pushAll(){
+  setSyncUI('busy','กำลังส่งข้อมูล...');
+  try{
+    const payload={
+      action:'saveAll',
+      data:DB,
+      users:getUsers(),           // sync users ขึ้น Sheets
+      mileageLogs:loadMileageLogs() // sync mileageLogs ขึ้น Sheets
+    };
+    await sheetsFetch('POST',payload);
+    lastSync=new Date();
+    setSyncUI('ok','ส่งข้อมูลเสร็จเมื่อ '+lastSync.toLocaleTimeString('th-TH'));
+    return true;
+  }catch(e){
+    setSyncUI('err','ส่งข้อมูลไม่สำเร็จ'); return false;
+  }
+}
+function doManualSync(){ pullFromSheets(false).then(ok=>{ if(ok) toast('🔄 ซิงค์ข้อมูลล่าสุดเรียบร้อยแล้ว'); }); }
+
+// ─── push เฉพาะ mileageLogs ขึ้น Sheets ───
+async function pushMileageLogs(){
+  if(!API) return;
+  try{
+    await sheetsFetch('POST',{action:'saveMileageLogs',mileageLogs:loadMileageLogs()});
+  }catch(e){ console.warn('[pushMileageLogs]',e); }
+}
+// ─── push เฉพาะ users ขึ้น Sheets ───
+async function pushUsers(){
+  if(!API) return;
+  try{
+    await sheetsFetch('POST',{action:'saveUsers',users:getUsers()});
+  }catch(e){ console.warn('[pushUsers]',e); }
+}
+
+// ═══════════════════════════════════════════
+//  RENDER — CAR GRID
+// ═══════════════════════════════════════════
+function renderCarGrid(){
+  const el=document.getElementById('carGrid'); if(!el) return;
+  el.innerHTML=DB.cars.map(c=>{
+    const fc=forecast(c.id); const recs=carRecs(c.id);
+    const nxt=fc.nextMile?`ถัดไป: ${fmtKm(fc.nextMile)}`:'';
+    const cls=fc.status==='danger'?'danger':fc.status==='warn'?'warn':'';
+    const dot=fc.status==='danger'?'<div class="dot">🔴</div>':fc.status==='warn'?'<div class="dot">🟡</div>':'';
+    return `<div class="ccard ${cls}${curCar===c.id?' on':''}" onclick="selectCar('${c.id}')">
+      ${dot}
+      <div class="plate">🚗 ${c.plate}</div>
+      <div class="cnt">${recs.length} รายการ</div>
+      ${nxt?`<div class="nxt">${nxt}</div>`:''}
+    </div>`;
+  }).join('');
+}
+
+// ═══════════════════════════════════════════
+//  RENDER — CAR DETAIL
+// ═══════════════════════════════════════════
+function selectCar(id){ curCar=id; renderCarGrid(); renderDetail(); }
+function renderDetail(){
+  const el=document.getElementById('carDetail'); if(!el) return;
+  if(!curCar){ el.innerHTML='<p style="color:var(--gray-400);text-align:center;padding:30px">เลือกทะเบียนรถด้านบน</p>'; return; }
+  const car=DB.cars.find(c=>c.id===curCar);
+  const recs=carRecs(curCar); const fc=forecast(curCar);
+  const last=recs.length?recs[recs.length-1]:null;
+  let alerts='';
+  if(fc.status==='danger') alerts+=`<div class="alert red"><span class="alert-icon">🔴</span><div class="alert-body"><b>คำเตือน:</b> ${fc.statusText}</div></div>`;
+  else if(fc.status==='warn') alerts+=`<div class="alert amber"><span class="alert-icon">🟡</span><div class="alert-body"><b>ใกล้ถึงกำหนด:</b> ${fc.statusText}</div></div>`;
+  else if(fc.status==='ok') alerts+=`<div class="alert green"><span class="alert-icon">✅</span><div class="alert-body">${fc.statusText}</div></div>`;
+  if(last?.note&&last.note!=='-') alerts+=`<div class="alert blue"><span class="alert-icon">📌</span><div class="alert-body"><b>หมายเหตุล่าสุด:</b> ${last.note}</div></div>`;
+  const rows=recs.map(r=>`<tr>
+    <td style="white-space:nowrap">${thaiDate(r.date)}</td>
+    <td>${r.mileage?`<span class="kmbadge">${fmtKm(r.mileage)}</span>`:'-'}</td>
+    <td>${typeBadge(r.type)}</td>
+    <td><ul class="dlist">${(r.details||[]).map(d=>`<li>${d}</li>`).join('')}</ul></td>
+    <td>${r.nextMileage?`<span class="nxtbadge">${fmtKm(r.nextMileage)}</span>`:'-'}</td>
+    <td style="font-size:12px">${r.note&&r.note!=='-'?r.note:''}</td>
+    <td class="no-print" style="white-space:nowrap">
+      <button class="btn btn-outline btn-sm" onclick="openEdit('${r.id}')">✏️</button>
+      <button class="btn btn-danger" style="margin-left:4px" onclick="delRec('${r.id}')">🗑</button>
+    </td>
+  </tr>`).join('');
+  el.innerHTML=`<div class="panel">
+    <div class="ptitle">
+      <div class="ptitle-left">📋 ${car.plate} <span class="badge-navy">${recs.length} รายการ</span></div>
+      <button class="btn btn-outline btn-sm no-print" onclick="doPrint('car')">🖨 พิมพ์</button>
+    </div>
+    ${alerts}
+    <div class="tbl-wrap">
+    <table>
+      <thead><tr><th>วันที่</th><th>ไมล์</th><th>ประเภท</th><th>รายละเอียด</th><th>ไมล์ถัดไป</th><th>หมายเหตุ</th><th class="no-print">แก้ไข</th></tr></thead>
+      <tbody>${rows||'<tr><td colspan="7" style="text-align:center;color:var(--gray-400);padding:20px">ยังไม่มีรายการ</td></tr>'}</tbody>
+    </table>
+    </div>
+    <div class="btnrow no-print">
+      <button class="btn btn-success" onclick="gotoPage('add');document.getElementById('addCar').value='${curCar}';onAddCarChange()">➕ เพิ่มรายการซ่อม</button>
+    </div>
+  </div>`;
+}
+
+// ═══════════════════════════════════════════
+//  RENDER — ADD FORM
+// ═══════════════════════════════════════════
+function renderAddForm(){
+  // อัปเดต dropdown ทะเบียนเท่านั้น — ไม่รีเซ็ตฟอร์ม
+  const sel=document.getElementById('addCar'); if(!sel) return;
+  const prev=sel.value;
+  sel.innerHTML='<option value="">-- เลือกทะเบียน --</option>'+DB.cars.map(c=>`<option value="${c.id}">${c.plate}</option>`).join('');
+  if(prev) sel.value=prev;
+}
+function initAddForm(){
+  document.getElementById('addDate').value=todayCE();
+  // อัปเดต label พ.ศ. ถัดจาก input date
+  const beLbl=document.getElementById('addDateBE');
+  if(beLbl) beLbl.textContent='= '+todayBEDisplay()+' (พ.ศ.)';
+  document.getElementById('addCar').innerHTML='<option value="">-- เลือกทะเบียน --</option>'+DB.cars.map(c=>`<option value="${c.id}">${c.plate}</option>`).join('');
+  document.getElementById('addType').value='เช็คระยะตามรอบ';
+  document.getElementById('addMile').value='';
+  document.getElementById('addNext').value='';
+  document.getElementById('addNote').value='';
+  detRows=['']; renderDetRows();
+  document.querySelectorAll('.qi').forEach(e=>e.classList.remove('on'));
+  onTypeChange(); onAddCarChange();
+  // Quick items
+  document.getElementById('qiWrap').innerHTML=QUICK.map(q=>`<span class="qi" onclick="toggleQI(this,'${q.replace(/'/g,"\\'")}'">${q}</span>`).join('');
+}
+function clearAddForm(){ initAddForm(); document.getElementById('histSel').innerHTML='<option value="">-- เลือกทะเบียนก่อน --</option>'; }
+function onAddCarChange(){
+  const id=document.getElementById('addCar').value;
+  const hs=document.getElementById('histSel');
+  if(!id){ hs.innerHTML='<option value="">-- เลือกทะเบียนก่อน --</option>'; return; }
+  const recs=carRecs(id);
+  hs.innerHTML='<option value="">-- เลือกจากประวัติที่เคยซ่อม --</option>'+
+    [...recs].reverse().map(r=>`<option value="${r.id}">${thaiDate(r.date)} — ${r.type} (${(r.details||[]).slice(0,2).join(', ')}${(r.details||[]).length>2?'...':''})</option>`).join('');
+}
+function applyHist(){
+  const id=document.getElementById('histSel').value; if(!id) return;
+  const r=DB.records.find(x=>x.id===id); if(!r) return;
+  document.getElementById('addType').value=r.type;
+  detRows=(r.details||[]).slice(); if(!detRows.length) detRows=[''];
+  renderDetRows();
+  document.querySelectorAll('.qi').forEach(e=>e.classList.toggle('on',detRows.includes(e.textContent)));
+  onTypeChange(); toast('📂 เติมรายละเอียดจากประวัติเดิมแล้ว');
+}
+function updateAddDateBE(){
+  const v=document.getElementById('addDate').value;
+  const lbl=document.getElementById('addDateBE');
+  if(!lbl) return;
+  if(!v){ lbl.textContent=''; return; }
+  const be=inputToBE(v);
+  lbl.textContent = be ? '= '+thaiDate(be)+' (พ.ศ.)' : '❌ วันที่ไม่ถูกต้อง';
+  lbl.style.color = be ? '#059669' : '#dc2626';
+}
+function onTypeChange(){
+  const t=document.getElementById('addType').value;
+  const show=isPeriodic(t);
+  ['grpMile','grpNext'].forEach(id=>{const el=document.getElementById(id);if(el)el.style.display=show?'':'none';});
+  if(!show){ document.getElementById('addMile').value=''; document.getElementById('addNext').value=''; }
+}
+function autoNextMile(){
+  const v=parseInt(document.getElementById('addMile').value);
+  if(v) document.getElementById('addNext').value=v+KM_INT;
+}
+function toggleQI(el,item){
+  el.classList.toggle('on');
+  if(el.classList.contains('on')){ if(!detRows.includes(item)){if(detRows.length===1&&!detRows[0]) detRows=[item]; else detRows.push(item);} }
+  else{ detRows=detRows.filter(d=>d!==item); if(!detRows.length) detRows=['']; }
+  renderDetRows();
+}
+function renderDetRows(){
+  const el=document.getElementById('deditor'); if(!el) return;
+  el.innerHTML=detRows.map((d,i)=>`<div class="drow">
+    <input type="text" value="${(d||'').replace(/"/g,'&quot;')}" placeholder="รายการซ่อม..." oninput="detRows[${i}]=this.value">
+    <button type="button" class="rm" onclick="detRows.splice(${i},1);if(!detRows.length)detRows=[''];renderDetRows()">×</button>
+  </div>`).join('');
+}
+function addDetailRow(){ detRows.push(''); renderDetRows(); }
+async function saveRecord(){
+  const carId=document.getElementById('addCar').value;
+  const dateInput=document.getElementById('addDate').value;
+  if(!carId){ alert('❌ กรุณาเลือกทะเบียนรถ'); return; }
+  if(!dateInput){ alert('❌ กรุณาเลือกวันที่'); return; }
+  // ตรวจสอบวันที่ให้ถูกต้อง
+  const beDate=inputToBE(dateInput);
+  if(!beDate){ alert('❌ วันที่ไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง'); return; }
+  const details=detRows.map(d=>d.trim()).filter(Boolean);
+  const rec={
+    id:genId(), carId,
+    date:beDate,
+    createdAt:new Date().toISOString(),
+    mileage:parseInt(document.getElementById('addMile').value)||null,
+    nextMileage:parseInt(document.getElementById('addNext').value)||null,
+    type:document.getElementById('addType').value,
+    note:document.getElementById('addNote').value,
+    details
+  };
+  DB.records.push(rec); saveLocal(); updateStats(); curCar=carId;
+  suppressPoll=Date.now()+60000;
+  toast('✅ บันทึกรายการเรียบร้อย กำลังซิงค์...');
+  gotoPage('records');
+  const addOk=await pushAction('addRecord',{record:rec});
+  if(addOk){
+    suppressPoll=Date.now()+30000;
+    // แจ้งเตือน LINE เมื่อบันทึกรายการซ่อมใหม่
+    const _car=DB.cars.find(x=>x.id===carId);
+    lineNotify('notifyAdd',{
+      plate: _car?_car.plate:carId,
+      detailText: details.slice(0,3).join(', ')+(details.length>3?'...':''),
+      updatedBy: getByStr()
+    });
+    // แจ้งเตือน LINE เมื่อบันทึกรายการซ่อมใหม่
+    const carObj=DB.cars.find(x=>x.id===carId);
+    lineNotify('notifyDataUpdate',{
+      actionType: '➕ เพิ่มรายการซ่อมบำรุง',
+      carLicense: carObj?.plate||carId,
+      detailText:  details.slice(0,3).join(', ')+(details.length>3?'...':''),
+      updatedBy:   getByStr()
+    });
+  } else {
+    suppressPoll=Date.now()+60000;
+    const ok2=await pushAll();
+    if(ok2) suppressPoll=Date.now()+30000;
+  }
+}
+
+// ═══════════════════════════════════════════
+//  RENDER — FORECAST
+// ═══════════════════════════════════════════
+function renderForecast(){
+  const el=document.getElementById('fcContent'); if(!el) return;
+  const items=DB.cars.map(c=>({c,fc:forecast(c.id),cnt:carRecs(c.id).length}));
+  const order={danger:0,warn:1,ok:2,info:3,unknown:4};
+  items.sort((a,b)=>order[a.fc.status]-order[b.fc.status]);
+  const dCnt=items.filter(i=>i.fc.status==='danger').length;
+  const wCnt=items.filter(i=>i.fc.status==='warn').length;
+  const summary=`<div class="scards" style="margin-bottom:18px">
+    <div class="scard"><h3>รถทั้งหมด</h3><div class="val">${DB.cars.length} คัน</div></div>
+    <div class="scard"><h3>รายการซ่อมทั้งหมด</h3><div class="val">${DB.records.length}</div></div>
+    <div class="scard" style="border-color:var(--red)"><h3>🔴 ต้องดำเนินการ</h3><div class="val">${dCnt}</div></div>
+    <div class="scard" style="border-color:var(--amber)"><h3>🟡 ใกล้ถึงกำหนด</h3><div class="val">${wCnt}</div></div>
+  </div>`;
+  const cards=items.map(({c,fc,cnt})=>{
+    const cls=fc.status==='danger'?'danger':fc.status==='warn'?'warn':fc.status==='ok'?'ok':'info';
+    const icon=fc.status==='danger'?'🔴':fc.status==='warn'?'🟡':fc.status==='ok'?'✅':'ℹ️';
+    let estLine='';
+    if(fc.estDate) estLine=` | คาดว่าถึงกำหนดประมาณ <b>${fc.estDate.toLocaleDateString('th-TH',{day:'numeric',month:'short',year:'numeric'})}</b> (เฉลี่ย ${fc.avgPerDay?Math.round(fc.avgPerDay*30).toLocaleString('th-TH'):'-'} กม./เดือน)`;
+    let sixBlock='';
+    if(fc.six){
+      const s=fc.six;
+      const scls=s.status;
+      const sIcon=s.status==='danger'?'🔴':s.status==='warn'?'🟡':'✅';
+      const sLabel=s.days<0?`เลยกำหนดมาแล้ว <b>${Math.abs(s.days)} วัน</b>`:s.days===0?'<b>ครบกำหนดวันนี้!</b>':`ถึงกำหนด <b>${s.nextDate.toLocaleDateString('th-TH',{day:'numeric',month:'long',year:'numeric'})}</b> — อีก <b>${s.days} วัน</b>`;
+      sixBlock=`<div class="sixmo-box ${scls}">${sIcon} <b>เช็คระยะ 6 เดือน:</b> ${sLabel}<br><span style="opacity:.75">📅 ครั้งล่าสุด: ${thaiDate(s.lastDate)}${s.note?' — '+s.note:''}</span></div>`;
+    }
+    return `<div class="fc-card ${cls}">
+      <div class="fc-row1"><span style="font-size:18px">${icon}</span><span class="fc-plate">${c.plate}</span><span class="fc-status">${fc.statusText}</span></div>
+      <div class="fc-detail">เช็คระยะล่าสุด: ${thaiDate(fc.lastDate)} | ไมล์ล่าสุด: ${fmtKm(fc.lastMile)} | ไมล์ถัดไป: ${fmtKm(fc.nextMile)}${fc.estimated?' (ประมาณการ)':''} | รวม ${cnt} รายการ${estLine}</div>
+      ${sixBlock}
+    </div>`;
+  }).join('');
+  el.innerHTML=summary+cards+'<p class="hint" style="margin-top:10px">* คาดการณ์จากอัตราการใช้งานเฉลี่ยจริงของแต่ละคัน</p>';
+  updateStats();
+}
+
+// ═══════════════════════════════════════════
+//  RENDER — SUMMARY
+// ═══════════════════════════════════════════
+function renderSummary(){
+  const el=document.getElementById('sumContent'); if(!el) return;
+  const cards=DB.cars.map(c=>{
+    const recs=carRecs(c.id);
+    const per=recs.filter(r=>isPeriodic(r.type)).length;
+    const em=recs.filter(r=>r.type==='ซ่อมฉุกเฉิน').length;
+    const gn=recs.filter(r=>r.type==='ซ่อมทั่วไป').length;
+    const last=recs.length?recs[recs.length-1]:null;
+    return `<div class="scard" style="cursor:pointer" onclick="selectCar('${c.id}');gotoPage('records')">
+      <h3>🚗 ${c.plate}</h3>
+      <div class="val">${recs.length}</div>
+      <div class="sub">ตามรอบ ${per} | ฉุกเฉิน ${em} | ทั่วไป ${gn}</div>
+      <div class="sub">${last?'ล่าสุด '+thaiDate(last.date):'ยังไม่มีข้อมูล'}</div>
+    </div>`;
+  }).join('');
+  const all=DB.records.flatMap(r=>r.details||[]);
+  const freq={}; all.forEach(d=>freq[d]=(freq[d]||0)+1);
+  const top=Object.entries(freq).sort((a,b)=>b[1]-a[1]).slice(0,12);
+  const topHtml=top.map(([d,n])=>`<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:13px"><span>${d}</span><span class="badge badge-blue">${n} ครั้ง</span></div>`).join('');
+  el.innerHTML=`<div class="panel">
+    <div class="ptitle"><div class="ptitle-left">📊 สรุปภาพรวมทุกคัน</div>
+    <button class="btn btn-outline btn-sm no-print" onclick="doPrint('summary')">🖨 พิมพ์</button></div>
+    <div class="scards">${cards}</div>
+  </div>
+  <div class="panel"><div class="ptitle"><div class="ptitle-left">🔧 รายการซ่อมที่พบบ่อย</div></div>${topHtml}</div>`;
+}
+
+// ═══════════════════════════════════════════
+//  RENDER — CAR LIST (ADMIN)
+// ═══════════════════════════════════════════
+function renderCarList(){
+  const el=document.getElementById('carList'); if(!el) return;
+  el.innerHTML=`<table>
+    <thead><tr><th>ทะเบียน</th><th>ประเภท</th><th>ยี่ห้อ/รุ่น</th><th>ปี</th><th>รายการ</th><th>ลบ</th></tr></thead>
+    <tbody>${DB.cars.map(c=>`<tr>
+      <td><b>${c.plate}</b></td><td>${c.type||'-'}</td><td>${c.model||'-'}</td><td>${c.year||'-'}</td>
+      <td>${carRecs(c.id).length}</td>
+      <td><button class="btn btn-danger" onclick="delCar('${c.id}')">🗑</button></td>
+    </tr>`).join('')}</tbody>
+  </table>`;
+}
+
+// ═══════════════════════════════════════════
+//  CRUD
+// ═══════════════════════════════════════════
+function updateEditDateBE(){
+  const v=document.getElementById('eDate').value;
+  const lbl=document.getElementById('editDateBE');
+  if(!lbl) return;
+  if(!v){ lbl.textContent=''; return; }
+  const be=inputToBE(v);
+  lbl.textContent = be ? '= '+thaiDate(be)+' (พ.ศ.)' : '❌ วันที่ไม่ถูกต้อง';
+  lbl.style.color = be ? '#059669' : '#dc2626';
+}
+function openEdit(id){
+  const r=DB.records.find(x=>x.id===id); if(!r) return;
+  editId=id;
+  document.getElementById('eDate').value=beToInput(r.date);
+  document.getElementById('eMile').value=r.mileage||'';
+  document.getElementById('eNext').value=r.nextMileage||'';
+  document.getElementById('eType').value=r.type||'เช็คระยะตามรอบ';
+  document.getElementById('eNote').value=r.note||'';
+  document.getElementById('eDetails').value=(r.details||[]).join('\n');
+  document.getElementById('editOverlay').classList.add('open');
+  updateEditDateBE(); // แสดง label พ.ศ. ทันที
+}
+async function saveEdit(){
+  if(!editId) return;
+  const r=DB.records.find(x=>x.id===editId); if(!r) return;
+  const di=document.getElementById('eDate').value;
+  if(di){
+    const converted=inputToBE(di);
+    if(!converted){ alert('❌ วันที่ไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง'); return; }
+    r.date=converted;
+  }
+  r.updatedAt=new Date().toISOString();
+  r.mileage=parseInt(document.getElementById('eMile').value)||null;
+  r.nextMileage=parseInt(document.getElementById('eNext').value)||null;
+  r.type=document.getElementById('eType').value;
+  r.note=document.getElementById('eNote').value;
+  r.details=document.getElementById('eDetails').value.split('\n').map(d=>d.trim()).filter(Boolean);
+  saveLocal(); closeModal(); renderDetail(); renderCarGrid(); updateStats();
+  suppressPoll=Date.now()+60000;
+  toast('✅ แก้ไขเรียบร้อย กำลังซิงค์...');
+  const ok=await pushAction('updateRecord',{record:r});
+  if(ok){
+    suppressPoll=Date.now()+30000;
+    // แจ้งเตือน LINE เมื่อแก้ไขรายการ
+    const _carE=DB.cars.find(x=>x.id===r.carId);
+    lineNotify('notifyAdd',{
+      plate: _carE?_carE.plate:r.carId,
+      detailText: '✏️ แก้ไข '+r.type+' วันที่ '+thaiDate(r.date),
+      updatedBy: getByStr()
+    });
+    // แจ้งเตือน LINE เมื่อแก้ไขรายการ
+    const carObjE=DB.cars.find(x=>x.id===r.carId);
+    lineNotify('notifyDataUpdate',{
+      actionType: '✏️ แก้ไขรายการซ่อมบำรุง',
+      carLicense: carObjE?.plate||r.carId,
+      detailText:  'วันที่: '+thaiDate(r.date)+' | ประเภท: '+r.type,
+      updatedBy:   getByStr()
+    });
+  } else {
+    toast('⚠️ ซิงค์ไม่สำเร็จ กำลังลองส่งใหม่...');
+    suppressPoll=Date.now()+60000;
+    const ok2=await pushAll();
+    if(ok2) suppressPoll=Date.now()+30000;
+  }
+}
+function closeModal(){ document.getElementById('editOverlay').classList.remove('open'); editId=null; }
+async function delRec(id){
+  if(!confirm('ลบรายการนี้หรือไม่?')) return;
+  // เก็บข้อมูลก่อนลบ เพื่อแจ้งเตือน LINE
+  const recDel=DB.records.find(r=>r.id===id);
+  const carDel=DB.cars.find(c=>c.id===recDel?.carId);
+  DB.records=DB.records.filter(r=>r.id!==id);
+  saveLocal(); renderDetail(); renderCarGrid(); updateStats();
+  suppressPoll=Date.now()+60000;
+  const delOk=await pushAction('deleteRecord',{id});
+  if(delOk){
+    suppressPoll=Date.now()+30000;
+    // แจ้งเตือน LINE เมื่อลบรายการ
+    lineNotify('notifyDataUpdate',{
+      actionType: '🗑️ ลบรายการซ่อมบำรุง',
+      carLicense: carDel?.plate||'?',
+      detailText:  'วันที่: '+thaiDate(recDel?.date||'')+' | ประเภท: '+(recDel?.type||'?'),
+      updatedBy:   getByStr()
+    });
+  }
+}
+async function addCar(){
+  const plate=document.getElementById('ncPlate').value.trim();
+  if(!plate){ alert('กรุณากรอกทะเบียนรถ'); return; }
+  const id=plate.replace(/\s+/g,'');
+  if(DB.cars.find(c=>c.id===id)){ alert('ทะเบียนนี้มีอยู่แล้ว'); return; }
+  const car={id,plate:plate+(plate.includes('รย.')?'':' รย.'),type:document.getElementById('ncType').value,model:document.getElementById('ncModel').value,year:document.getElementById('ncYear').value};
+  DB.cars.push(car); saveLocal();
+  ['ncPlate','ncType','ncModel','ncYear'].forEach(x=>document.getElementById(x).value='');
+  renderCarList(); renderCarGrid(); updateStats();
+  toast('✅ เพิ่มทะเบียนรถเรียบร้อย กำลังซิงค์...');
+  suppressPoll=Date.now()+60000;
+  const carOk=await pushAction('addCar',{car});
+  if(carOk) suppressPoll=Date.now()+30000;
+}
+async function delCar(id){
+  if(!confirm(`ลบทะเบียน ${id}? (มี ${carRecs(id).length} รายการซ่อม)`)) return;
+  DB.cars=DB.cars.filter(c=>c.id!==id); DB.records=DB.records.filter(r=>r.carId!==id);
+  if(curCar===id) curCar=null;
+  saveLocal(); renderCarList(); renderCarGrid(); renderDetail(); updateStats();
+  suppressPoll=Date.now()+10000;
+  await pushAll();
+}
+
+// ═══════════════════════════════════════════
+//  BACKUP ACTIONS
+// ═══════════════════════════════════════════
+async function pushAllToSheets(){
+  if(!confirm('ส่งข้อมูลทั้งหมดในเครื่องขึ้น Google Sheets ทับของเดิม?')) return;
+  suppressPoll=Date.now()+10000;
+  const ok=await pushAll();
+  if(ok) toast('📤 ส่งข้อมูลขึ้น Sheets เรียบร้อยแล้ว');
+}
+async function restoreDefault(){
+  if(!confirm('กู้คืนข้อมูล 11 คัน จากไฟล์ Excel — จะเขียนทับข้อมูลปัจจุบันใน Sheets และในเครื่อง ยืนยันหรือไม่?')) return;
+  DB=defaultData(); saveLocal(); refreshUI(); suppressPoll=Date.now()+10000;
+  const ok=await pushAll();
+  if(ok) toast('✅ กู้คืนข้อมูล 11 คันเรียบร้อยแล้ว');
+}
+async function mergeDefault(){
+  if(!confirm('เพิ่มข้อมูลเดิม 11 คันเข้าไปรวมกับข้อมูลปัจจุบัน (ไม่ลบของที่มีอยู่)?')) return;
+  await pullFromSheets(true);
+  const orig=defaultData();
+  const cids=new Set(DB.cars.map(c=>c.id)); const rids=new Set(DB.records.map(r=>r.id));
+  const nc=orig.cars.filter(c=>!cids.has(c.id)); const nr=orig.records.filter(r=>!rids.has(r.id));
+  if(!nc.length&&!nr.length){ toast('ℹ️ ไม่มีข้อมูลใหม่ให้เพิ่ม'); return; }
+  DB.cars=[...DB.cars,...nc]; DB.records=[...DB.records,...nr];
+  saveLocal(); refreshUI(); suppressPoll=Date.now()+10000;
+  const ok=await pushAll();
+  if(ok) toast(`✅ เพิ่มข้อมูล: รถ ${nc.length} คัน, รายการ ${nr.length} รายการ`);
+}
+function exportJSON(){
+  const b=new Blob([JSON.stringify({exportedAt:new Date().toISOString(),data:DB},null,2)],{type:'application/json'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(b);
+  a.download=`backup_car_maint_${new Date().toISOString().slice(0,10)}.json`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href);
+  toast('📥 บันทึกไฟล์ .json เรียบร้อยแล้ว');
+}
+function exportCSV(){
+  const rows=[['ทะเบียนรถ','วันที่','เลขไมล์','ประเภท','รายละเอียด','ไมล์ถัดไป','หมายเหตุ']];
+  DB.records.slice().sort((a,b)=>a.carId>b.carId?1:-1).forEach(r=>{
+    const car=DB.cars.find(c=>c.id===r.carId);
+    rows.push([car?car.plate:r.carId,thaiDate(r.date),r.mileage||'',r.type,(r.details||[]).join(' | '),r.nextMileage||'',r.note||'']);
+  });
+  const esc=v=>{const s=String(v??'').replace(/"/g,'""');return /[",\n]/.test(s)?`"${s}"`:s;};
+  const b=new Blob(['\uFEFF'+rows.map(r=>r.map(esc).join(',')).join('\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a'); a.href=URL.createObjectURL(b);
+  a.download=`car_maint_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(a.href);
+  toast('📊 บันทึกไฟล์ .csv เรียบร้อยแล้ว (เปิดด้วย Excel ได้เลย)');
+}
+function importJSON(ev){
+  const f=ev.target.files[0]; if(!f) return;
+  if(!confirm('นำเข้าไฟล์นี้จะแทนที่ข้อมูลทั้งหมดในเครื่อง ยืนยันหรือไม่?')){ ev.target.value=''; return; }
+  const rd=new FileReader();
+  rd.onload=e=>{
+    try{
+      const p=JSON.parse(e.target.result); const d=p.data||p;
+      if(!d.cars||!d.records) throw new Error('โครงสร้างไฟล์ไม่ถูกต้อง');
+      DB=d; saveLocal(); refreshUI(); toast('✅ นำเข้าข้อมูลเรียบร้อยแล้ว');
+    }catch(err){ alert('นำเข้าไม่สำเร็จ: '+err.message); }
+    ev.target.value='';
+  };
+  rd.readAsText(f,'UTF-8');
+}
+async function resetAll(){
+  if(!confirm('รีเซ็ตข้อมูลทั้งหมดกลับเป็นค่าเริ่มต้น 11 คัน จาก Excel?\n\nข้อมูลที่บันทึกเพิ่มเติมทั้งหมดจะหายไปทั้งในเครื่องและใน Google Sheets')) return;
+  DB=defaultData(); saveLocal(); refreshUI(); suppressPoll=Date.now()+10000;
+  await pushAll(); toast('🔄 รีเซ็ตข้อมูลเรียบร้อยแล้ว');
+}
+function updateBackupStat(){
+  const el=document.getElementById('backupStat'); if(!el) return;
+  let kb=0; try{kb=Math.round(new Blob([JSON.stringify(DB)]).size/1024*10)/10;}catch(e){}
+  el.innerHTML=`🚗 รถทั้งหมด <b>${DB.cars.length} คัน</b> &nbsp;|&nbsp; 🔧 รายการซ่อม <b>${DB.records.length} รายการ</b><br>${lastSync?`✅ ซิงค์ Sheets ล่าสุดเมื่อ ${lastSync.toLocaleString('th-TH')}`:'⚠️ ยังไม่ได้ซิงค์กับ Google Sheets ในเซสชันนี้'}<br><span style="font-size:11px;font-weight:400;color:var(--gray-400)">ข้อมูลหลักเก็บใน Google Sheets (ถาวร) | สำรองในเครื่อง ${kb} KB (อาจถูก browser ล้าง)</span>`;
+}
+
+// ═══════════════════════════════════════════
+//  PRINT
+// ═══════════════════════════════════════════
+function doPrint(which){
+  const car = DB.cars.find(x => x.id === curCar);
+  const subs = {
+    car:      `รายงานประวัติซ่อมบำรุง — ${car?.plate||''}`,
+    forecast: 'รายงานคาดการณ์และแจ้งเตือนระยะซ่อมบำรุง',
+    summary:  'รายงานสรุปภาพรวมรถยนต์ราชการทุกคัน'
+  };
+
+  // อัปเดต header
+  const subEl = document.getElementById('printSub');
+  if(subEl) subEl.textContent = subs[which] || 'เอกสาร';
+  const dateEl = document.getElementById('printDate');
+  if(dateEl) dateEl.textContent = 'พิมพ์วันที่ ' + todayBEDisplay() + ' เวลา ' + new Date().toLocaleTimeString('th-TH',{hour:'2-digit',minute:'2-digit'}) + ' น.';
+  // set logo ถ้ายังไม่มี
+  const logoEl = document.getElementById('printLogo');
+  if(logoEl) logoEl.src = 'data:image/jpeg;base64,'+LOGO;
+
+  // map which → page id
+  const pageMap = { car:'records', forecast:'forecast', summary:'summary' };
+  const targetPg = pageMap[which] || 'records';
+
+  // ซ่อนทุกหน้าก่อน แล้วแสดงเฉพาะหน้าที่ต้องพิมพ์
+  const allPages = ['records','add','forecast','summary','cars','backup','users','mileage'];
+  allPages.forEach(p => {
+    const el = document.getElementById('pg-'+p);
+    if(el){
+      if(p === targetPg){
+        el.classList.remove('hidden');
+        el.classList.add('print-target');
+      } else {
+        el.classList.add('hidden');
+        el.classList.remove('print-target');
+      }
+    }
+  });
+
+  // print-hdr แสดงอัตโนมัติผ่าน @media print CSS
+
+  // print
+  setTimeout(() => {
+    window.print();
+    // หลังพิมพ์ — restore หน้าเดิม
+    setTimeout(() => {
+      // print-hdr ซ่อนอัตโนมัติผ่าน CSS
+      allPages.forEach(p => {
+        const el = document.getElementById('pg-'+p);
+        if(el){
+          el.classList.remove('print-target');
+          if(p !== curPage) el.classList.add('hidden');
+          else el.classList.remove('hidden');
+        }
+      });
+    }, 500);
+  }, 150); // รอ render เสร็จก่อนพิมพ์
+}
+
+
+function gotoPage(pg){
+  curPage=pg;
+  ['records','add','forecast','summary','cars','backup','users','mileage'].forEach(p=>{const el=document.getElementById('pg-'+p);if(el)el.classList.toggle('hidden',p!==pg);});
+  document.querySelectorAll('.ntab').forEach(t=>t.classList.toggle('on',t.dataset.pg===pg));
+  if(pg==='records'){ renderCarGrid(); renderDetail(); }
+  else if(pg==='add'){ if(!document.getElementById('addCar').children.length) initAddForm(); else renderAddForm(); }
+  else if(pg==='forecast') renderForecast();
+  else if(pg==='summary') renderSummary();
+  else if(pg==='cars') renderCarList();
+  else if(pg==='backup') updateBackupStat();
+  else if(pg==='users') renderUsersPage();
+  else if(pg==='mileage') initMileagePage();
+}
+function updateStats(){
+  document.getElementById('stCars').textContent=DB.cars.length;
+  document.getElementById('stRecs').textContent=DB.records.length;
+  const alts=DB.cars.filter(c=>{const f=forecast(c.id);return f.status==='warn'||f.status==='danger';}).length;
+  document.getElementById('stAlerts').textContent=alts;
+}
+function refreshUI(){
+  updateStats(); renderCarGrid();
+  if(curPage==='records') renderDetail();
+  else if(curPage==='forecast') renderForecast();
+  else if(curPage==='summary') renderSummary();
+  else if(curPage==='cars') renderCarList();
+  else if(curPage==='backup') updateBackupStat();
+  // ไม่ re-render add form เพื่อกันข้อมูลหาย
+  // add form: renderAddForm() อัปเดตแค่ dropdown ไม่ reset fields
+}
+
+
+// ═══════════════════════════════════════════
+//  LINE NOTIFICATION (ส่งผ่าน Apps Script)
+// ═══════════════════════════════════════════
+function lineNotify(action, payload) {
+  // fire-and-forget — ไม่ await เพื่อไม่ block UI
+  if(!API) return;
+  const body = JSON.stringify({action, ...payload, key:SK}); // secret key
+  fetch(API, {
+    method:'POST',
+    headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body
+  }).then(r=>r.text())
+    .then(t=>console.log('[LINE ok]',action))
+    .catch(e=>console.warn('[LINE err]',action,e.message));
+}
+function getByStr(){
+  if(!currentUser) return 'ระบบ';
+  const n = currentUser.name || currentUser.username || 'ผู้ใช้';
+  const u = currentUser.username || '';
+  return u ? n+' (@'+u+')' : n;
+}
+
+// ═══════════════════════════════════════════
+//  INIT
+// ═══════════════════════════════════════════
+async function init(){
+  // ตั้งโลโก้
+  const LOGODATA='data:image/jpeg;base64,'+LOGO;
+  ['splashLogo','hdrLogo','printLogo','loginLogo'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.src=LOGODATA;
+  });
+  // ตรวจ session ที่ยังมีอยู่ (ภายใน browser session เดิม)
+  try{
+    const sess=JSON.parse(sessionStorage.getItem('car_session')||'null');
+    if(sess&&sess.username&&(Date.now()-sess.loginAt)<8*3600*1000){ // session ไม่เกิน 8 ชม.
+      const users=getUsers();
+      const found=users.find(x=>x.username===sess.username&&x.active!==false);
+      if(found){ currentUser={...found}; document.getElementById('loginWrap').style.display='none'; setupRoleUI(); updateCurUserBadge(); }
+    }
+  }catch(e){}
+  document.getElementById('splashMsg').textContent='กำลังเชื่อมต่อ Google Sheets...';
+
+  // ดึงจาก Sheets เป็นอันดับแรก (แหล่งข้อมูลถาวร)
+  let ok=false;
+  if(API){
+    try{ ok=await pullFromSheets(true); }catch(e){ ok=false; }
+  }
+  if(!ok){
+    document.getElementById('splashMsg').textContent='ออฟไลน์ — โหลดข้อมูลสำรอง...';
+    await new Promise(r=>setTimeout(r,600));
+    if(!loadLocal()){ DB=defaultData(); saveLocal(); }
+  } else {
+    // Sheets สำเร็จ — ถ้า Sheets ไม่มี users ให้ push ขึ้นไป
+    // (กรณี users อยู่แค่ localStorage ยังไม่เคย sync)
+    const localUsers=loadUsers();
+    if(localUsers.length>0) pushUsers();
+    const localMl=loadMileageLogs();
+    if(localMl.length>0) pushMileageLogs();
+  }
+
+  // ซ่อน splash
+  const sp=document.getElementById('splash');
+  sp.style.opacity='0'; sp.style.transition='opacity .4s';
+  setTimeout(()=>sp.style.display='none',420);
+
+  updateStats();
+  gotoPage('records');
+  if(DB.cars.length&&!curCar) selectCar(DB.cars[0].id);
+
+  // Polling ทุก 20 วินาที
+  if(API) setInterval(()=>{ if(!syncing) pullFromSheets(true); },POLL);
+}
+
+init();
+
+// ─── PWA Service Worker ───────────────────
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg=>console.log('[PWA] SW registered:', reg.scope))
+      .catch(err=>console.warn('[PWA] SW failed:', err));
+  });
+}
+</script>
+</body>
+</html>
