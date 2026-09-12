@@ -1707,16 +1707,20 @@ function setSyncUI(st,msg){
   el.textContent=icon+' '+msg;
 }
 async function sheetsFetch(method,bodyObj){
-  const opts={method,headers:{'Content-Type':'text/plain;charset=utf-8'}};
-  if(bodyObj) opts.body=JSON.stringify(bodyObj);
-  const url=method==='GET'?API+'?action=getAll':API;
-  const res=await fetch(url,opts);
-  if(!res.ok) throw new Error('HTTP '+res.status);
   let json;
-  try{ json=await res.json(); }
-  catch(e){ return {success:true}; } // Apps Script อาจ redirect แต่สำเร็จแล้ว
-  if(json.error) throw new Error(json.error);
-  return json;
+  if(method==='GET'){
+    const url=API+'?action=getAll&key='+encodeURIComponent(SK);
+    const res=await fetch(url,{method:'GET',headers:{'Content-Type':'text/plain;charset=utf-8'}});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    try{ json=await res.json(); }catch(e){ return {success:true}; }
+  } else {
+    const payload=Object.assign({},bodyObj,{key:SK});
+    const res=await fetch(API,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body:JSON.stringify(payload)});
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    try{ json=await res.json(); }catch(e){ return {success:true}; }
+  }
+  if(json&&json.error) throw new Error(json.error);
+  return json||{success:true};
 }
 function cleanFromSheets(data){
   // sync users จาก Sheets (ถ้ามี) มาอัปเดต localStorage
@@ -2411,7 +2415,7 @@ function refreshUI(){
 function lineNotify(action, payload) {
   // fire-and-forget — ไม่ await เพื่อไม่ block UI
   if(!API) return;
-  const body = JSON.stringify({action, ...payload});
+  const body = JSON.stringify({action, ...payload, key:SK}); // secret key
   fetch(API, {
     method:'POST',
     headers:{'Content-Type':'text/plain;charset=utf-8'},
