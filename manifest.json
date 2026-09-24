@@ -1,0 +1,20 @@
+{
+  "name": "ระบบบันทึกการซ่อมบำรุงรถยนต์ราชการ — โรงพยาบาลนิคมพัฒนา",
+  "short_name": "ซ่อมรถ รพ.นิคม",
+  "description": "ระบบบันทึกและติดตามการซ่อมบำรุงรถยนต์ราชการ โรงพยาบาลนิคมพัฒนา จังหวัดระยอง",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#1a3a5c",
+  "theme_color": "#1a3a5c",
+  "orientation": "portrait-primary",
+  "lang": "th",
+  "categories": ["productivity", "utilities"],
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ],
+  "screenshots": [
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "form_factor": "narrow" }
+  ]
+}
