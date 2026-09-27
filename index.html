@@ -1193,7 +1193,9 @@ function resetIdleTimer(){
       currentUser=null;
       sessionStorage.removeItem('car_session');
       const w=document.getElementById('loginWrap');
-      w.style.display='flex'; w.style.opacity='1';
+      w.style.transition='none';
+      w.style.opacity='1';
+      w.style.display='flex';
       showView('loginView');
       document.getElementById('lgUser').value='';
       document.getElementById('lgPass').value='';
@@ -1313,9 +1315,11 @@ function doLogout(){
   document.getElementById('lgUser').value='';
   document.getElementById('lgPass').value='';
   document.getElementById('loginErr').className='login-err';
-  // แสดงหน้า login
+  // แสดงหน้า login — reset transition ก่อน แล้วค่อย show
   const w=document.getElementById('loginWrap');
-  w.style.display='flex'; w.style.opacity='1';
+  w.style.transition='none';   // ยกเลิก transition ที่ค้างอยู่
+  w.style.opacity='1';         // รีเซ็ต opacity (hideLogin ทำให้เป็น 0)
+  w.style.display='flex';      // แสดงผล
   showView('loginView');
 }
 
