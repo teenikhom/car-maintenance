@@ -1184,6 +1184,33 @@ function getDefaultUsers(){
   return users;
 }
 
+// ── Idle Timer (global) ──
+function resetIdleTimer(){
+  if(window._idleTimer) clearTimeout(window._idleTimer);
+  if(!currentUser) return;
+  window._idleTimer = setTimeout(()=>{
+    if(currentUser){
+      currentUser=null;
+      sessionStorage.removeItem('car_session');
+      const w=document.getElementById('loginWrap');
+      w.style.display='flex'; w.style.opacity='1';
+      showView('loginView');
+      document.getElementById('lgUser').value='';
+      document.getElementById('lgPass').value='';
+      alert('⏰ ไม่มีการใช้งาน 30 นาที ระบบออกจากระบบอัตโนมัติ');
+    }
+  }, 30*60*1000); // 30 นาที
+}
+
+// ── Login Attempt Tracking ──
+// เก็บใน sessionStorage: { attempts: N, blockedUntil: timestamp }
+function getLoginAttempts(u){
+  try{ return JSON.parse(localStorage.getItem('_la_'+u)||'{"attempts":0,"blockedUntil":0}'); }
+  catch(e){ return {attempts:0,blockedUntil:0}; }
+}
+function setLoginAttempts(u,obj){ localStorage.setItem('_la_'+u, JSON.stringify(obj)); }
+function clearLoginAttempts(u){ localStorage.removeItem('_la_'+u); }
+
 // ── Login ──
 function doLogin(){
   const u=document.getElementById('lgUser').value.trim().toLowerCase();
@@ -1193,18 +1220,45 @@ function doLogin(){
 
   if(!u||!p){ showLoginErr('กรุณากรอก username และรหัสผ่าน'); return; }
 
+  // ── ตรวจ Block ──
+  const la=getLoginAttempts(u);
+  const now=Date.now();
+  if(la.blockedUntil && now < la.blockedUntil){
+    const min=Math.ceil((la.blockedUntil-now)/60000);
+    showLoginErr('🔒 บัญชีนี้ถูกล็อกชั่วคราว กรุณารอ '+min+' นาที');
+    return;
+  }
+
   const users=getUsers();
   const found=users.find(x=>x.username===u&&x.active!==false);
-  if(!found){ showLoginErr('ไม่พบชื่อผู้ใช้นี้ในระบบ'); return; }
+  if(!found){
+    // นับ attempt แม้ไม่มี user (ป้องกัน user enumeration)
+    const upd={attempts:(la.attempts||0)+1, blockedUntil:0};
+    if(upd.attempts>=5) upd.blockedUntil=now+15*60*1000;
+    setLoginAttempts(u,upd);
+    showLoginErr('ไม่พบชื่อผู้ใช้นี้ในระบบ');
+    return;
+  }
 
   const h=hashPwd(u,p);
-  if(h!==found.hash){ showLoginErr('รหัสผ่านไม่ถูกต้อง'); return; }
+  if(h!==found.hash){
+    const upd={attempts:(la.attempts||0)+1, blockedUntil:0};
+    if(upd.attempts>=5){
+      upd.blockedUntil=now+15*60*1000;
+      showLoginErr('🔒 กรอกรหัสผิด 5 ครั้ง บัญชีถูกล็อก 15 นาที');
+    } else {
+      showLoginErr('รหัสผ่านไม่ถูกต้อง (ครั้งที่ '+upd.attempts+'/5)');
+    }
+    setLoginAttempts(u,upd);
+    return;
+  }
 
-  // Login สำเร็จ
+  // Login สำเร็จ → ล้าง attempt counter
+  clearLoginAttempts(u);
   currentUser={...found};
   sessionStorage.setItem('car_session', JSON.stringify({username:found.username, loginAt:Date.now()}));
   hideLogin();
-  // แจ้งเตือน LINE เมื่อ Login
+  resetIdleTimer && resetIdleTimer();
   // แจ้งเตือน LINE เมื่อ Login — ส่งหลัง currentUser set แล้ว
   if(currentUser && currentUser.username){
     lineNotify('notifyLogin',{
@@ -1253,12 +1307,16 @@ function doLogout(){
   if(!confirm('ต้องการออกจากระบบหรือไม่?')) return;
   currentUser=null;
   sessionStorage.removeItem('car_session');
+  // หยุด idle timer
+  if(window._idleTimer) clearTimeout(window._idleTimer);
   // ล้าง input
   document.getElementById('lgUser').value='';
   document.getElementById('lgPass').value='';
   document.getElementById('loginErr').className='login-err';
+  // แสดงหน้า login
+  const w=document.getElementById('loginWrap');
+  w.style.display='flex'; w.style.opacity='1';
   showView('loginView');
-  document.getElementById('loginWrap').style.display='flex';
 }
 
 // ── Show/Hide Login ──
@@ -2479,8 +2537,14 @@ async function init(){
   gotoPage('records');
   if(DB.cars.length&&!curCar) selectCar(DB.cars[0].id);
 
-  // Polling ทุก 20 วินาที
-  if(API) setInterval(()=>{ if(!syncing) pullFromSheets(true); },POLL);
+  // Polling ทุก 20 วินาที (เช็ค login ก่อนทุกครั้ง)
+  if(API) setInterval(()=>{ if(!syncing && currentUser) pullFromSheets(true); },POLL);
+
+  // ── Idle timeout 30 นาที ──
+  ['click','keydown','mousemove','touchstart','scroll'].forEach(ev=>{
+    document.addEventListener(ev, resetIdleTimer, {passive:true});
+  });
+  resetIdleTimer();
 }
 
 init();
